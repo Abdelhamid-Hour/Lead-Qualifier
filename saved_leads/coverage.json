@@ -1,0 +1,22 @@
+{
+  "niches": [
+    "Car rental"
+  ],
+  "countries": [
+    {
+      "name": "Guadeloupe",
+      "cities": [
+        {
+          "name": "Pointe-à-Pitre",
+          "scans": {
+            "Car rental": {
+              "scanned": false,
+              "linkedList": "Car_rental-Guadeloupe-Pointe-à-Pitre",
+              "leadsCount": 93
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
