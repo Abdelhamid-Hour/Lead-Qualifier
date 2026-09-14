@@ -3,16 +3,22 @@ import { CATEGORY_LABELS, CATEGORY_COLORS, personalizeMessage } from '../utils/c
 import { buildWhatsAppLink } from '../utils/phoneUtils.js';
 import { ExternalLink, MessageCircle, MapPin, Star, Trash2 } from 'lucide-react';
 
-export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, searchQuery }) {
+export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, searchQuery, showWithWaOnly }) {
   const filteredLeads = useMemo(() => {
-    if (!searchQuery) return leads;
+    let result = leads;
+    
+    if (showWithWaOnly) {
+      result = result.filter(l => l.waLink);
+    }
+    
+    if (!searchQuery) return result;
     const q = searchQuery.toLowerCase();
-    return leads.filter(l =>
+    return result.filter(l =>
       (l.name || '').toLowerCase().includes(q) ||
       (l.phone || '').toLowerCase().includes(q) ||
       (l.website || '').toLowerCase().includes(q)
     );
-  }, [leads, searchQuery]);
+  }, [leads, searchQuery, showWithWaOnly]);
 
   const handleCategoryChange = (lead, newCategory) => {
     let message = '';

@@ -54,6 +54,7 @@ export default function App() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showWithWaOnly, setShowWithWaOnly] = useState(false);
   const [savedLists, setSavedLists] = useState([]);
   const [filePath, setFilePath] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -551,6 +552,15 @@ export default function App() {
                   )}
                 </div>
                 <div className="list-actions">
+                  <div className="filter-wa-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="filterWa" 
+                      checked={showWithWaOnly} 
+                      onChange={(e) => setShowWithWaOnly(e.target.checked)} 
+                    />
+                    <label htmlFor="filterWa" style={{ fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>Has WA Link</label>
+                  </div>
                   <div className="search-input-wrapper">
                     <Search size={14} />
                     <input
@@ -578,6 +588,7 @@ export default function App() {
                     onDeleteLead={handleDeleteLead}
                     messages={settings.messages}
                     searchQuery={searchQuery}
+                    showWithWaOnly={showWithWaOnly}
                   />
                 </>
               )}
