@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { 
   ChevronDown, ChevronRight, Plus, Trash2, Search, 
   MapPin, FolderOpen, Check, Square, CheckSquare,
-  Globe, X
+  Globe, X, FileText
 } from 'lucide-react';
 
 export default function CoverageMap({ 
@@ -17,6 +17,7 @@ export default function CoverageMap({
   onRemoveCity, 
   onToggleScan, 
   onOpenCityList,
+  onUpdateCityNote,
   savedLists,
   onShowDialog
 }) {
@@ -28,6 +29,8 @@ export default function CoverageMap({
   const [newCityFor, setNewCityFor] = useState(null); // countryName or null
   const [newCityName, setNewCityName] = useState('');
   const [collapsedCountries, setCollapsedCountries] = useState({});
+  const [editingNoteFor, setEditingNoteFor] = useState(null);
+  const [noteInput, setNoteInput] = useState('');
 
   const niches = coverageData.niches || [];
   const countries = coverageData.countries || [];
@@ -312,39 +315,75 @@ export default function CoverageMap({
                     const leadsCount = scan.leadsCount || 0;
                     
                     return (
-                      <div key={city.name} className={`coverage-city-row ${scan.scanned ? 'scanned' : ''}`}>
-                        <button 
-                          className="coverage-scan-checkbox"
-                          onClick={() => onToggleScan(country.name, city.name, selectedNiche)}
-                          title={scan.scanned ? 'Mark as not scanned' : 'Mark as scanned'}
-                        >
-                          {scan.scanned 
-                            ? <CheckSquare size={18} className="text-success" /> 
-                            : <Square size={18} className="text-muted" />
-                          }
-                        </button>
-                        <span className="coverage-city-name">{city.name}</span>
-                        <span className="coverage-city-leads">
-                          {leadsCount > 0 ? `${leadsCount} leads` : '0 leads'}
-                        </span>
-                        {scan.date && (
-                          <span className="coverage-city-date">{scan.date}</span>
+                      <div key={city.name} className="coverage-city-container">
+                        <div className={`coverage-city-row ${scan.scanned ? 'scanned' : ''}`}>
+                          <button 
+                            className="coverage-scan-checkbox"
+                            onClick={() => onToggleScan(country.name, city.name, selectedNiche)}
+                            title={scan.scanned ? 'Mark as not scanned' : 'Mark as scanned'}
+                          >
+                            {scan.scanned 
+                              ? <CheckSquare size={18} className="text-success" /> 
+                              : <Square size={18} className="text-muted" />
+                            }
+                          </button>
+                          <span className="coverage-city-name">{city.name}</span>
+                          <span className="coverage-city-leads">
+                            {leadsCount > 0 ? `${leadsCount} leads` : '0 leads'}
+                          </span>
+                          {scan.date && (
+                            <span className="coverage-city-date">{scan.date}</span>
+                          )}
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => {
+                              if (editingNoteFor === `${country.name}-${city.name}`) {
+                                setEditingNoteFor(null);
+                              } else {
+                                setEditingNoteFor(`${country.name}-${city.name}`);
+                                setNoteInput(city.note || '');
+                              }
+                            }}
+                            title="Notes"
+                            style={{ color: city.note ? '#10b981' : '#a1a1aa' }}
+                          >
+                            <FileText size={14} />
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-sm coverage-open-btn"
+                            onClick={() => onOpenCityList(scan.linkedList)}
+                            title={`Open ${scan.linkedList}`}
+                          >
+                            <FolderOpen size={14} /> Open
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => handleDeleteCity(country.name, city.name)}
+                            title="Delete City"
+                            style={{ color: '#ef4444' }}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        {editingNoteFor === `${country.name}-${city.name}` && (
+                          <div className="coverage-city-note" style={{ padding: '8px 16px', background: '#18181b', borderLeft: '2px solid #10b981', marginLeft: '24px', marginBottom: '8px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                            <textarea
+                              value={noteInput}
+                              onChange={(e) => setNoteInput(e.target.value)}
+                              placeholder="Add notes for this city..."
+                              style={{ flex: 1, minHeight: '60px', background: '#27272a', border: '1px solid #3f3f46', borderRadius: '4px', padding: '8px', color: '#f4f4f5', fontSize: '0.85rem' }}
+                            />
+                            <button 
+                              className="btn btn-primary btn-sm" 
+                              onClick={() => {
+                                onUpdateCityNote(country.name, city.name, noteInput);
+                                setEditingNoteFor(null);
+                              }}
+                            >
+                              Save
+                            </button>
+                          </div>
                         )}
-                        <button
-                          className="btn btn-ghost btn-sm coverage-open-btn"
-                          onClick={() => onOpenCityList(scan.linkedList)}
-                          title={`Open ${scan.linkedList}`}
-                        >
-                          <FolderOpen size={14} /> Open
-                        </button>
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => handleDeleteCity(country.name, city.name)}
-                          title="Delete City"
-                          style={{ color: '#ef4444' }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
                       </div>
                     );
                   })}

@@ -10,7 +10,7 @@ import { autoClassify, checkWebsiteHealth } from './utils/classifier.js';
 import { buildWhatsAppLink } from './utils/phoneUtils.js';
 import { selectSaveFolder, saveListToExcel, loadSavedLists, loadListFromExcel, hasFolderAccess, deleteSavedList, downloadExcel } from './utils/fileManager.js';
 import { DEFAULT_MESSAGES, DEFAULT_SOCIAL_DOMAINS, DEFAULT_SAAS_DOMAINS, personalizeMessage } from './utils/constants.js';
-import { loadCoverage, saveCoverage, addNiche, removeNiche, addCountry, removeCountry, addCity, removeCity, toggleScan } from './utils/coverageManager.js';
+import { loadCoverage, saveCoverage, addNiche, removeNiche, addCountry, removeCountry, addCity, removeCity, toggleScan, updateCityNote } from './utils/coverageManager.js';
 
 import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X } from 'lucide-react';
 import Dialog from './components/Dialog.jsx';
@@ -606,6 +606,7 @@ export default function App() {
               onRemoveCity={handleRemoveCity}
               onToggleScan={handleToggleScan}
               onOpenCityList={handleOpenCityList}
+              onUpdateCityNote={(country, city, note) => setCoverageData(prev => updateCityNote(prev, country, city, note))}
               savedLists={savedLists}
               onShowDialog={showDialog}
             />

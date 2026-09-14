@@ -148,3 +148,23 @@ export function toggleScan(coverageData, countryName, cityName, nicheName) {
   };
 }
 
+export function updateCityNote(coverageData, countryName, cityName, note) {
+  return {
+    ...coverageData,
+    countries: coverageData.countries.map(c => {
+      if (c.name === countryName) {
+        return {
+          ...c,
+          cities: c.cities.map(city => {
+            if (city.name === cityName) {
+              return { ...city, note };
+            }
+            return city;
+          })
+        };
+      }
+      return c;
+    })
+  };
+}
+
