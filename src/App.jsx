@@ -74,6 +74,30 @@ export default function App() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   }, [settings]);
 
+  // Recalculate lead messages when templates change
+  const prevMessagesRef = useRef(JSON.stringify(settings.messages));
+  useEffect(() => {
+    const currentMessages = JSON.stringify(settings.messages);
+    if (currentMessages !== prevMessagesRef.current) {
+      prevMessagesRef.current = currentMessages;
+      setLeads(prevLeads => {
+        let changed = false;
+        const newLeads = prevLeads.map(lead => {
+          if (lead.category !== 'not_checked' && lead.category !== 'cat5') {
+            const newMessage = personalizeMessage(settings.messages[lead.category] || '', lead.name);
+            const newWaLink = buildWhatsAppLink(lead.phone, newMessage);
+            if (lead.message !== newMessage || lead.waLink !== newWaLink) {
+              changed = true;
+              return { ...lead, message: newMessage, waLink: newWaLink };
+            }
+          }
+          return lead;
+        });
+        return changed ? newLeads : prevLeads;
+      });
+    }
+  }, [settings.messages]);
+
   // Load saved lists from directory
   const refreshSavedLists = useCallback(async () => {
     const lists = await loadSavedLists(settings.saveDirectory);
