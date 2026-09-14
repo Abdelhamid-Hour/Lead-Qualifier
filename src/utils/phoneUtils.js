@@ -44,5 +44,5 @@ export function buildWhatsAppLink(phone, message) {
   const cleanPhone = cleanPhoneForWhatsApp(phone);
   if (!cleanPhone) return '';
   const encodedMsg = encodeURIComponent(message || '');
-  return `https://wa.me/${cleanPhone}?text=${encodedMsg}`;
+  return `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodedMsg}`;
 }
