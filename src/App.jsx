@@ -274,7 +274,8 @@ export default function App() {
         const healthResult = await checkWebsiteHealth(lead.website);
         if (healthResult === 'cat3') {
           setLeads(prev => prev.map(l => {
-            if (l.id === lead.id) {
+            // Only update if the user hasn't manually changed it already
+            if (l.id === lead.id && l.category === 'not_checked') {
               const message = personalizeMessage(settings.messages.cat3 || '', l.name);
               const waLink = buildWhatsAppLink(l.phone, message);
               return { ...l, category: 'cat3', message, waLink };

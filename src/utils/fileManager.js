@@ -10,8 +10,16 @@ export function sanitizeFileName(name) {
   return name.replace(/[^a-zA-Z0-9_\-\s\u00C0-\u024F]/g, '').replace(/\s+/g, '_').substring(0, 100) || 'leads';
 }
 
+const saveLocks = {};
+
 export async function saveListToExcel(listName, leads, saveDirectory) {
   const cleanName = sanitizeFileName(listName);
+  
+  while (saveLocks[cleanName]) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  saveLocks[cleanName] = true;
+  
   try {
     let { data: listData, error: listError } = await supabase
       .from('lists')
@@ -57,6 +65,8 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
   } catch (err) {
     console.error('Save error:', err);
     return null;
+  } finally {
+    saveLocks[cleanName] = false;
   }
 }
 
