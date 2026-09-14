@@ -59,7 +59,8 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
         message: l.message || '',
         wa_link: l.waLink || ''
       }));
-      await supabase.from('leads').insert(leadsToInsert);
+      const { error: insertErr } = await supabase.from('leads').insert(leadsToInsert);
+      if (insertErr) throw insertErr;
     }
     return { path: cleanName };
   } catch (err) {
@@ -118,7 +119,7 @@ export async function loadListFromExcel(listItem, saveDirectory) {
     }));
   } catch (err) {
     console.error('Load error:', err);
-    return [];
+    return null; // Return null instead of [] to indicate failure
   }
 }
 

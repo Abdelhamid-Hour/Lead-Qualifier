@@ -317,9 +317,19 @@ export default function App() {
     setIsSidebarOpen(false);
     setIsLoadingLeads(true);
     const loadedLeads = await loadListFromExcel(listItem, settings.saveDirectory);
-    setLeads(loadedLeads);
-    setListName(listItem.name);
-    setActiveView('leads');
+    if (loadedLeads !== null) {
+      setLeads(loadedLeads);
+      setListName(listItem.name);
+      setActiveView('leads');
+    } else {
+      setDialogState({
+        isOpen: true,
+        title: 'Load Error',
+        message: 'Failed to load the list from the database. Please check your connection.',
+        type: 'alert',
+        confirmText: 'OK'
+      });
+    }
     setIsLoadingLeads(false);
   };
 
