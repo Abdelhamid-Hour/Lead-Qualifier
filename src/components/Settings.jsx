@@ -1,35 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, ChevronDown, ChevronUp, RotateCcw, Globe, RefreshCw, Zap, FileEdit, Palette, Save } from 'lucide-react';
+import { useState } from 'react';
+import { Settings as SettingsIcon, ChevronDown, ChevronUp, RotateCcw, Globe, RefreshCw, Zap, FileEdit, Palette } from 'lucide-react';
 
 export default function Settings({ settings, onUpdateSettings, onResetSettings }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('messages');
-  const [localSettings, setLocalSettings] = useState(settings);
-
-  useEffect(() => {
-    setLocalSettings(settings);
-  }, [settings]);
+  const [activeTab, setActiveTab] = useState('domains');
 
   const handleDomainChange = (field, value) => {
     const domains = value.split('\n').map(d => d.trim()).filter(Boolean);
-    setLocalSettings({ ...localSettings, [field]: domains });
+    onUpdateSettings({ ...settings, [field]: domains });
   };
 
   const handleMessageChange = (key, value) => {
-    setLocalSettings({
-      ...localSettings,
-      messages: { ...localSettings.messages, [key]: value }
+    onUpdateSettings({
+      ...settings,
+      messages: { ...settings.messages, [key]: value }
     });
-  };
-
-  const handleSave = () => {
-    onUpdateSettings(localSettings);
-    setIsOpen(false);
-  };
-
-  const handleReset = () => {
-    onResetSettings();
-    setIsOpen(false);
   };
 
   const catLabels = {
@@ -47,27 +32,22 @@ export default function Settings({ settings, onUpdateSettings, onResetSettings }
           <SettingsIcon size={16} /> Settings {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         {isOpen && (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-ghost btn-sm" onClick={handleReset} title="Reset to Defaults">
-              <RotateCcw size={14} /> Reset
-            </button>
-            <button className="btn btn-primary btn-sm" onClick={handleSave} title="Save Settings">
-              <Save size={14} /> Save
-            </button>
-          </div>
+          <button className="btn btn-ghost btn-sm" onClick={onResetSettings} title="Reset to Defaults">
+            <RotateCcw size={14} /> Reset
+          </button>
         )}
       </div>
       {isOpen && (
         <div className="settings-content">
           <div className="settings-tabs">
             <button
-              className={`tab ${activeTab === 'messages' ? 'active' : ''}`}
-              onClick={() => setActiveTab('messages')}
-            >Messages</button>
-            <button
               className={`tab ${activeTab === 'domains' ? 'active' : ''}`}
               onClick={() => setActiveTab('domains')}
             >Domains</button>
+            <button
+              className={`tab ${activeTab === 'messages' ? 'active' : ''}`}
+              onClick={() => setActiveTab('messages')}
+            >Messages</button>
           </div>
 
           {activeTab === 'domains' && (
@@ -75,7 +55,7 @@ export default function Settings({ settings, onUpdateSettings, onResetSettings }
               <div className="domain-group">
                 <label>Social Media Domains (one per line)</label>
                 <textarea
-                  value={localSettings.socialDomains.join('\n')}
+                  value={settings.socialDomains.join('\n')}
                   onChange={(e) => handleDomainChange('socialDomains', e.target.value)}
                   rows={6}
                 />
@@ -83,7 +63,7 @@ export default function Settings({ settings, onUpdateSettings, onResetSettings }
               <div className="domain-group">
                 <label>SaaS Platform Domains (one per line)</label>
                 <textarea
-                  value={localSettings.saasDomains.join('\n')}
+                  value={settings.saasDomains.join('\n')}
                   onChange={(e) => handleDomainChange('saasDomains', e.target.value)}
                   rows={6}
                 />
@@ -97,7 +77,7 @@ export default function Settings({ settings, onUpdateSettings, onResetSettings }
                 <div className="message-group" key={key}>
                   <label>{catLabels[key].icon} {catLabels[key].label} Message</label>
                   <textarea
-                    value={localSettings.messages[key] || ''}
+                    value={settings.messages[key] || ''}
                     onChange={(e) => handleMessageChange(key, e.target.value)}
                     rows={4}
                   />

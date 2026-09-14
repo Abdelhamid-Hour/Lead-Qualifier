@@ -14,30 +14,16 @@ import { loadCoverage, saveCoverage, addNiche, removeNiche, addCountry, removeCo
 
 import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X } from 'lucide-react';
 import Dialog from './components/Dialog.jsx';
-
+import { loadDBSettings, saveDBSettings } from './utils/settingsManager.js';
 
 const SETTINGS_KEY = 'lq_settings';
 const LAST_LIST_KEY = 'lq_last_list';
 
-function loadSettings() {
+// We'll still load initial default from memory while DB loads
+function getInitialSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      let needsUpdate = false;
-      if (parsed.messages) {
-        Object.keys(parsed.messages).forEach(key => {
-          if (parsed.messages[key] && !parsed.messages[key].includes('{name}')) {
-            parsed.messages[key] = parsed.messages[key].replace('Bonjour,', 'Bonjour {name},');
-            needsUpdate = true;
-          }
-        });
-      }
-      if (needsUpdate) {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
-      }
-      return parsed;
-    }
+    if (raw) return JSON.parse(raw);
   } catch {}
   return {
     socialDomains: [...DEFAULT_SOCIAL_DOMAINS],
@@ -48,7 +34,7 @@ function loadSettings() {
 }
 
 export default function App() {
-  const [settings, setSettings] = useState(loadSettings);
+  const [settings, setSettings] = useState(getInitialSettings);
   const [leads, setLeads] = useState([]);
   const [listName, setListName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
@@ -69,9 +55,18 @@ export default function App() {
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
 
+  // Load DB settings on mount
+  useEffect(() => {
+    loadDBSettings().then(dbSettings => {
+      setSettings(prev => ({ ...prev, ...dbSettings }));
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...getInitialSettings(), ...dbSettings }));
+    });
+  }, []);
+
   // Save settings on change
   useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    saveDBSettings(settings);
   }, [settings]);
 
   // Recalculate lead messages when templates change
