@@ -97,7 +97,7 @@ export function parseGoogleMapsHTML(htmlString) {
 
     if (name) {
       leadsArray.push({
-        id: Date.now() + index,
+        id: crypto.randomUUID(),
         name,
         type, // Store the business type
         phone,

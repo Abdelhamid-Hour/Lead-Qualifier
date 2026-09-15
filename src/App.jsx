@@ -57,17 +57,21 @@ export default function App() {
   const initialLoadDoneRef = useRef(false);
 
   // Load DB settings on mount
+  const settingsLoadedRef = useRef(false);
   useEffect(() => {
     loadDBSettings().then(dbSettings => {
       setSettings(prev => ({ ...prev, ...dbSettings }));
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...getInitialSettings(), ...dbSettings }));
+      settingsLoadedRef.current = true;
     });
   }, []);
 
-  // Save settings on change
+  // Save settings on change — only after initial DB load
   useEffect(() => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    saveDBSettings(settings);
+    if (settingsLoadedRef.current) {
+      saveDBSettings(settings);
+    }
   }, [settings]);
 
   // Recalculate lead messages when templates change
@@ -144,11 +148,13 @@ export default function App() {
         }
       })(),
       loadCoverage(settings.saveDirectory).then(data => {
-        setCoverageData(data);
-        if (data.niches?.length > 0) {
-          setSelectedNiche(data.niches[0]);
+        if (data !== null) {
+          setCoverageData(data);
+          if (data.niches?.length > 0) {
+            setSelectedNiche(data.niches[0]);
+          }
+          coverageInitializedRef.current = true;
         }
-        coverageInitializedRef.current = true;
       })
     ]).catch(err => {
       console.error('Initial load error:', err);
@@ -158,7 +164,10 @@ export default function App() {
     });
     
     // Failsafe: if promises hang, force unlock after 5 seconds
-    const failsafe = setTimeout(() => setIsLoadingApp(false), 5000);
+    const failsafe = setTimeout(() => {
+      initialLoadDoneRef.current = true;
+      setIsLoadingApp(false);
+    }, 5000);
     return () => clearTimeout(failsafe);
   }, [refreshSavedLists, settings.saveDirectory]);
 
@@ -517,6 +526,7 @@ export default function App() {
             saveDirectory={settings.saveDirectory}
             onSaveDirectoryChange={(dir) => setSettings({ ...settings, saveDirectory: dir })}
             filePath={filePath}
+            onBackupRestored={refreshSavedLists}
           />
         </aside>
 

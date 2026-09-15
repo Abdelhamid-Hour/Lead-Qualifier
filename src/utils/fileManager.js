@@ -119,7 +119,7 @@ export async function loadListFromExcel(listItem, saveDirectory) {
     if (leadsError) throw leadsError;
 
     return leads.map((row, index) => ({
-      id: Date.now() + index, // keep local React keys
+      id: crypto.randomUUID(),
       name: row.name,
       type: row.type,
       phone: row.phone,

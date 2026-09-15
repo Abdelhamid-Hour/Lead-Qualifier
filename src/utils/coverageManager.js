@@ -18,7 +18,7 @@ export async function loadCoverage(saveDirectory) {
     return data ? data.data : { niches: [], countries: [] };
   } catch (err) {
     console.error('Coverage load error:', err);
-    return { niches: [], countries: [] };
+    return null; // Return null to signal failure — never return empty data
   }
 }
 
