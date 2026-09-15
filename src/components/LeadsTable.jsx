@@ -1,9 +1,9 @@
 import { useState, useMemo } from 'react';
 import { CATEGORY_LABELS, CATEGORY_COLORS, personalizeMessage } from '../utils/constants.js';
 import { buildWhatsAppLink } from '../utils/phoneUtils.js';
-import { ExternalLink, MessageCircle, MapPin, Star, Trash2 } from 'lucide-react';
+import { ExternalLink, MessageCircle, MapPin, Star, Trash2, CheckCircle2 } from 'lucide-react';
 
-export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, searchQuery, showWithWaOnly }) {
+export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, searchQuery, showWithWaOnly, contactedSet, onMarkContacted }) {
   const filteredLeads = useMemo(() => {
     let result = leads;
     
@@ -39,6 +39,13 @@ export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages
     });
   };
 
+  const isLeadContacted = (lead) => {
+    if (!lead.phone || !lead.name || !contactedSet) return false;
+    const cleanPhone = lead.phone.replace(/[^0-9+]/g, '');
+    const cleanName = lead.name.trim().toLowerCase();
+    return contactedSet.has(cleanPhone + '|' + cleanName);
+  };
+
   if (!leads.length) {
     return (
       <div className="empty-table">
@@ -67,19 +74,26 @@ export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages
           </tr>
         </thead>
         <tbody>
-          {filteredLeads.map((lead, index) => (
-            <tr key={lead.id} className={`lead-row cat-${lead.category}`}>
+          {filteredLeads.map((lead, index) => {
+            const contacted = isLeadContacted(lead);
+            return (
+            <tr key={lead.id} className={`lead-row cat-${lead.category} ${contacted ? 'contacted-row' : ''}`}>
               <td className="td-index">{index + 1}</td>
               <td className="td-name" title={lead.name}>
                 <div className="name-content">
                   <span className="name-text">{lead.name}</span>
+                  {contacted && (
+                    <span className="contacted-badge" title="Already contacted!" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.7rem', fontWeight: 600, background: '#10b98120', padding: '2px 6px', borderRadius: '12px', marginTop: '4px', width: 'fit-content' }}>
+                      <CheckCircle2 size={12} /> Contacted
+                    </span>
+                  )}
                 </div>
               </td>
               <td className="td-type" style={{ fontSize: '0.75rem', color: '#a1a1aa' }}>{lead.type || '—'}</td>
               <td className="td-reviews">{lead.reviews}</td>
               <td className="td-wa">
                 {lead.waLink ? (
-                  <a href={lead.waLink} target="_blank" rel="noopener noreferrer" className="wa-link" title="Open WhatsApp">
+                  <a href={lead.waLink} target="_blank" rel="noopener noreferrer" className="wa-link" title="Open WhatsApp" onClick={() => onMarkContacted(lead)}>
                     <MessageCircle size={18} fill="currentColor" strokeWidth={1.5} />
                   </a>
                 ) : (
@@ -140,7 +154,8 @@ export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages
                 </button>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
