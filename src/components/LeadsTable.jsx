@@ -83,8 +83,8 @@ export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages
                 <div className="name-content">
                   <span className="name-text">{lead.name}</span>
                   {contacted && (
-                    <span className="contacted-badge" title="Already contacted!" style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '2px', fontSize: '0.7rem', fontWeight: 600, background: '#10b98120', padding: '2px 6px', borderRadius: '12px', marginTop: '4px', width: 'fit-content' }}>
-                      <CheckCircle2 size={12} /> Contacted
+                    <span style={{ marginLeft: '6px', color: '#10b981', display: 'flex', alignItems: 'center' }} title="Already contacted">
+                      <CheckCircle2 size={16} />
                     </span>
                   )}
                 </div>

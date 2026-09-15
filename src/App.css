@@ -553,6 +553,14 @@ input:focus, textarea:focus {
   background: var(--bg-hover);
 }
 
+.contacted-row {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.contacted-row:hover {
+  background: rgba(16, 185, 129, 0.15);
+}
+
 /* Category row colors */
 .cat-badge {
   display: inline-flex;
