@@ -455,12 +455,21 @@ export default function App() {
     setIsLoadingLeads(true);
     const loadedLeads = await loadListFromExcel({ name: linkedListName }, settings.saveDirectory);
     if (loadedLeads !== null) {
+      // List exists in DB — load it
       setLeads(loadedLeads);
       setListName(linkedListName);
       setActiveView('leads');
       localStorage.setItem(LAST_LIST_KEY, linkedListName);
+    } else {
+      // List doesn't exist yet — open empty view with the name pre-set
+      // The list will be created in DB only when the user pastes and parses leads
+      setLeads([]);
+      setListName(linkedListName);
+      setFilePath('');
+      setActiveView('leads');
     }
     setIsLoadingLeads(false);
+    setIsSidebarOpen(false);
   };
 
   const showDialog = (opts) => {
