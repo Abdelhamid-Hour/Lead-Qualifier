@@ -54,6 +54,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+  const initialLoadDoneRef = useRef(false);
 
   // Load DB settings on mount
   useEffect(() => {
@@ -99,9 +100,11 @@ export default function App() {
     setSavedLists(lists);
   }, [settings.saveDirectory]);
 
-  // Auto-save debounced
+  // Auto-save debounced — BLOCKED until initial load is done
   const saveTimeoutRef = useRef(null);
   useEffect(() => {
+    // CRITICAL: Never auto-save before the initial load completes
+    if (!initialLoadDoneRef.current) return;
     if (!listName) return;
     
     // Prevent creating ghost files: don't save if there are no leads AND the file doesn't exist yet
@@ -150,6 +153,7 @@ export default function App() {
     ]).catch(err => {
       console.error('Initial load error:', err);
     }).finally(() => {
+      initialLoadDoneRef.current = true;
       setIsLoadingApp(false);
     });
     
@@ -441,10 +445,12 @@ export default function App() {
     if (!linkedListName) return;
     setIsLoadingLeads(true);
     const loadedLeads = await loadListFromExcel({ name: linkedListName }, settings.saveDirectory);
-    setLeads(loadedLeads || []);
-    setListName(linkedListName);
-    setActiveView('leads');
-    localStorage.setItem(LAST_LIST_KEY, linkedListName);
+    if (loadedLeads !== null) {
+      setLeads(loadedLeads);
+      setListName(linkedListName);
+      setActiveView('leads');
+      localStorage.setItem(LAST_LIST_KEY, linkedListName);
+    }
     setIsLoadingLeads(false);
   };
 

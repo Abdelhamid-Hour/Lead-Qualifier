@@ -41,8 +41,22 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
 
     const listId = listData.id;
 
+    // SAFETY CHECK: If we are about to save 0 leads, check if DB already has leads.
+    // If it does, REFUSE to wipe them — this is almost certainly a bug/race condition.
+    if (leads.length === 0) {
+      const { count } = await supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: true })
+        .eq('list_id', listId);
+      if (count > 0) {
+        console.warn('SAFETY: Blocked saving 0 leads over', count, 'existing leads for list:', cleanName);
+        return { path: cleanName };
+      }
+    }
+
     // Remove old leads
-    await supabase.from('leads').delete().eq('list_id', listId);
+    const { error: deleteErr } = await supabase.from('leads').delete().eq('list_id', listId);
+    if (deleteErr) throw deleteErr;
 
     // Insert new leads
     if (leads.length > 0) {
