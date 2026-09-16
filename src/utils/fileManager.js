@@ -25,18 +25,20 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
       .from('lists')
       .select('id')
       .eq('name', cleanName)
-      .single();
+      .limit(1);
 
-    if (listError && listError.code === 'PGRST116') {
+    if (listError) throw listError;
+
+    if (!listData || listData.length === 0) {
       const { data: newList, error: insertError } = await supabase
         .from('lists')
         .insert({ name: cleanName })
         .select()
-        .single();
+        .limit(1);
       if (insertError) throw insertError;
-      listData = newList;
-    } else if (listError) {
-      throw listError;
+      listData = newList[0];
+    } else {
+      listData = listData[0];
     }
 
     const listId = listData.id;
@@ -106,14 +108,15 @@ export async function loadListFromExcel(listItem, saveDirectory) {
       .from('lists')
       .select('id')
       .eq('name', cleanName)
-      .single();
+      .limit(1);
 
     if (listError) throw listError;
+    if (!listData || listData.length === 0) return null;
 
     const { data: leads, error: leadsError } = await supabase
       .from('leads')
       .select('*')
-      .eq('list_id', listData.id)
+      .eq('list_id', listData[0].id)
       .order('created_at', { ascending: true });
 
     if (leadsError) throw leadsError;

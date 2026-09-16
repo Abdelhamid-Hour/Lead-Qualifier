@@ -328,9 +328,16 @@ export default function App() {
     });
   };
 
-  // Load a saved list
   const handleLoadList = async (listItem) => {
     setIsSidebarOpen(false);
+    
+    // FORCE SAVE CURRENT LIST
+    if (listName && leads.length > 0) {
+      setIsSaving(true);
+      await saveListToExcel(listName, leads, settings.saveDirectory);
+      setIsSaving(false);
+    }
+    
     setIsLoadingLeads(true);
     const loadedLeads = await loadListFromExcel(listItem, settings.saveDirectory);
     if (loadedLeads !== null) {
@@ -350,7 +357,14 @@ export default function App() {
   };
 
   // New list
-  const handleNewList = () => {
+  const handleNewList = async (skipSave = false) => {
+    // FORCE SAVE CURRENT LIST
+    if (!skipSave && listName && leads.length > 0) {
+      setIsSaving(true);
+      await saveListToExcel(listName, leads, settings.saveDirectory);
+      setIsSaving(false);
+    }
+    
     setLeads([]);
     const now = new Date();
     const defaultName = `Leads_${now.toISOString().slice(0, 10)}_${now.getHours()}h${String(now.getMinutes()).padStart(2, '0')}`;
@@ -372,7 +386,7 @@ export default function App() {
       onConfirm: async () => {
         await deleteSavedList(list.name, settings.saveDirectory);
         if (listName === list.name) {
-          handleNewList();
+          await handleNewList(true);
         }
         refreshSavedLists();
       },
@@ -455,6 +469,14 @@ export default function App() {
   };
   const handleOpenCityList = async (linkedListName) => {
     if (!linkedListName) return;
+    
+    // FORCE SAVE CURRENT LIST
+    if (listName && leads.length > 0) {
+      setIsSaving(true);
+      await saveListToExcel(listName, leads, settings.saveDirectory);
+      setIsSaving(false);
+    }
+    
     setIsLoadingLeads(true);
     const loadedLeads = await loadListFromExcel({ name: linkedListName }, settings.saveDirectory);
     if (loadedLeads !== null) {
