@@ -70,7 +70,7 @@ export function parseGoogleMapsHTML(htmlString) {
     }
     
     const text = card.textContent;
-    const phoneMatch = text.match(/(?:\+33|\+59[0-9]|\+262|0[1-9])(?:[\s.-]*\d){8,9}/);
+    const phoneMatch = text.match(/(?:\+|00)[1-9][\s\d.-]{7,15}\d|(?:\(\d{2,5}\)|0\d{1,4}|1[\s.-]\d{3,4}|\d{3,4})[\s.-]*(?:\d{2,4}[\s.-]*){1,4}\d{2,4}/);
     let phone = phoneMatch ? phoneMatch[0].trim() : '';
     
     const websiteLink = Array.from(card.querySelectorAll('a')).find(a => {
