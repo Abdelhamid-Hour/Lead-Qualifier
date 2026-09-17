@@ -334,8 +334,18 @@ export default function App() {
     // FORCE SAVE CURRENT LIST
     if (listName && leads.length > 0) {
       setIsSaving(true);
-      await saveListToExcel(listName, leads, settings.saveDirectory);
+      const saveResult = await saveListToExcel(listName, leads, settings.saveDirectory);
       setIsSaving(false);
+      if (!saveResult) {
+        setDialogState({
+          isOpen: true,
+          type: 'alert',
+          title: 'Save Error',
+          message: 'Failed to save the current list to the database. Please try again or check your connection.',
+          confirmText: 'OK'
+        });
+        return;
+      }
     }
     
     setIsLoadingLeads(true);
@@ -361,8 +371,18 @@ export default function App() {
     // FORCE SAVE CURRENT LIST
     if (!skipSave && listName && leads.length > 0) {
       setIsSaving(true);
-      await saveListToExcel(listName, leads, settings.saveDirectory);
+      const saveResult = await saveListToExcel(listName, leads, settings.saveDirectory);
       setIsSaving(false);
+      if (!saveResult) {
+        setDialogState({
+          isOpen: true,
+          type: 'alert',
+          title: 'Save Error',
+          message: 'Failed to save the current list. Cannot create a new list until the current one is saved.',
+          confirmText: 'OK'
+        });
+        return;
+      }
     }
     
     setLeads([]);
@@ -473,8 +493,18 @@ export default function App() {
     // FORCE SAVE CURRENT LIST
     if (listName && leads.length > 0) {
       setIsSaving(true);
-      await saveListToExcel(listName, leads, settings.saveDirectory);
+      const saveResult = await saveListToExcel(listName, leads, settings.saveDirectory);
       setIsSaving(false);
+      if (!saveResult) {
+        setDialogState({
+          isOpen: true,
+          type: 'alert',
+          title: 'Save Error',
+          message: 'Failed to save the current list to the database. Please check your connection.',
+          confirmText: 'OK'
+        });
+        return;
+      }
     }
     
     setIsLoadingLeads(true);
