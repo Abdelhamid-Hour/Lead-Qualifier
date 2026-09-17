@@ -11,6 +11,16 @@ export const DEFAULT_MESSAGES = {
   cat6: `Bonjour {name},\n\nJe suis développeur web spécialisé dans les sites de location de véhicules.\n\nJ'ai visité votre site et je vois que vous avez déjà une présence en ligne — c'est super. Mais je pense qu'un design plus moderne et professionnel pourrait vraiment faire passer votre image au niveau supérieur, sans changer vos habitudes de gestion.\n\nJe propose un site clé en main avec :\n\n• Design moderne et responsive\n• Disponibilités en temps réel\n• Calcul automatique des tarifs\n• Réservation directe avec confirmation instantanée\n• Et bien plus : gestion du parc, fiches clients, confirmations automatiques, etc.\n\nJ'ai tourné une démo de 2 min pour vous montrer. Répondez simplement « OUI » pour la recevoir ici, ou faites-moi signe avec votre WhatsApp si vous préférez que je vous l'envoie là-bas !\n\nBonne journée !`
 };
 
+export const DEFAULT_SCHEDULE = [
+  {
+    id: '1',
+    localStartTime: '09:00',
+    localEndTime: '12:00',
+    targetCountry: 'France',
+    targetTimezone: 'Europe/Paris'
+  }
+];
+
 export const DEFAULT_SOCIAL_DOMAINS = [
   'facebook.com', 'fb.com', 'instagram.com', 'twitter.com', 'x.com',
   'linkedin.com', 'tiktok.com', 'youtube.com', 'pinterest.com',

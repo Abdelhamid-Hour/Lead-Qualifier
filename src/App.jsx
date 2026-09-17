@@ -5,6 +5,7 @@ import Settings from './components/Settings.jsx';
 import SavedLists from './components/SavedLists.jsx';
 import StatsBar from './components/StatsBar.jsx';
 import CoverageMap from './components/CoverageMap.jsx';
+import Schedule from './components/Schedule.jsx';
 import { parseGoogleMapsHTML } from './utils/parser.js';
 import { autoClassify, checkWebsiteHealth } from './utils/classifier.js';
 import { buildWhatsAppLink } from './utils/phoneUtils.js';
@@ -12,7 +13,7 @@ import { selectSaveFolder, saveListToExcel, loadSavedLists, loadListFromExcel, h
 import { DEFAULT_MESSAGES, DEFAULT_SOCIAL_DOMAINS, DEFAULT_SAAS_DOMAINS, personalizeMessage } from './utils/constants.js';
 import { loadCoverage, saveCoverage, addNiche, removeNiche, addCountry, removeCountry, addCity, removeCity, toggleScan, updateCityNote } from './utils/coverageManager.js';
 
-import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X } from 'lucide-react';
+import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X, Clock } from 'lucide-react';
 import Dialog from './components/Dialog.jsx';
 import { loadDBSettings, saveDBSettings } from './utils/settingsManager.js';
 import { loadAllContactedLeads, markAsContacted } from './utils/contactedManager.js';
@@ -564,6 +565,12 @@ export default function App() {
             >
               <Map size={16} /> Coverage Map
             </button>
+            <button 
+              className={`view-tab ${activeView === 'schedule' ? 'active' : ''}`}
+              onClick={() => setActiveView('schedule')}
+            >
+              <Clock size={16} /> Schedule
+            </button>
           </div>
         </div>
         {isChecking && (
@@ -595,7 +602,7 @@ export default function App() {
         </aside>
 
         <main className="main-content">
-          {activeView === 'leads' ? (
+          {activeView === 'leads' && (
             <>
               <Settings
                 settings={settings}
@@ -714,7 +721,9 @@ export default function App() {
                 </>
               )}
             </>
-          ) : (
+          )}
+
+          {activeView === 'coverage' && (
             <CoverageMap
               coverageData={coverageData}
               selectedNiche={selectedNiche}
@@ -730,6 +739,13 @@ export default function App() {
               onUpdateCityNote={(country, city, note) => setCoverageData(prev => updateCityNote(prev, country, city, note))}
               savedLists={savedLists}
               onShowDialog={showDialog}
+            />
+          )}
+
+          {activeView === 'schedule' && (
+            <Schedule 
+              settings={settings}
+              setSettings={setSettings}
             />
           )}
         </main>

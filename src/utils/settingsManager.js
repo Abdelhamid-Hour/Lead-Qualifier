@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient.js';
-import { DEFAULT_MESSAGES, DEFAULT_SOCIAL_DOMAINS, DEFAULT_SAAS_DOMAINS } from './constants.js';
+import { DEFAULT_MESSAGES, DEFAULT_SOCIAL_DOMAINS, DEFAULT_SAAS_DOMAINS, DEFAULT_SCHEDULE } from './constants.js';
 
 export async function loadDBSettings() {
   try {
@@ -12,7 +12,7 @@ export async function loadDBSettings() {
     if (error && error.code !== 'PGRST116') throw error;
     
     if (data && data.data) {
-      return data.data;
+      return { schedule: [...DEFAULT_SCHEDULE], ...data.data };
     }
   } catch (err) {
     console.error('Settings load error:', err);
@@ -21,7 +21,8 @@ export async function loadDBSettings() {
   return {
     socialDomains: [...DEFAULT_SOCIAL_DOMAINS],
     saasDomains: [...DEFAULT_SAAS_DOMAINS],
-    messages: { ...DEFAULT_MESSAGES }
+    messages: { ...DEFAULT_MESSAGES },
+    schedule: [...DEFAULT_SCHEDULE]
   };
 }
 
