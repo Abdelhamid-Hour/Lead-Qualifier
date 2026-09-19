@@ -68,6 +68,7 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isLoadingApp, setIsLoadingApp] = useState(true);
   const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+  const [isDeduplicating, setIsDeduplicating] = useState(false);
   const [contactedSet, setContactedSet] = useState(new Set());
   const initialLoadDoneRef = useRef(false);
 
@@ -673,14 +674,23 @@ export default function App() {
                     <>
                       <button 
                         onClick={() => {
-                          const deduped = deduplicateLeads(leads);
-                          setLeads(deduped);
+                          setIsDeduplicating(true);
+                          setTimeout(() => {
+                            const deduped = deduplicateLeads(leads);
+                            setLeads(deduped);
+                            setIsDeduplicating(false);
+                          }, 100);
                         }}
                         className="btn btn-secondary"
                         style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}
                         title="Remove Duplicates"
+                        disabled={isDeduplicating}
                       >
-                        <Layers size={14} /> Deduplicate
+                        {isDeduplicating ? (
+                          <><Loader2 size={14} className="animate-spin" /> Deduplicating...</>
+                        ) : (
+                          <><Layers size={14} /> Deduplicate</>
+                        )}
                       </button>
                       <button 
                         onClick={() => downloadExcel(listName, leads)}
