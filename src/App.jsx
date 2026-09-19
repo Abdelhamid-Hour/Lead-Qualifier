@@ -428,31 +428,6 @@ export default function App() {
     });
   };
 
-  const handleMergeLists = async (listNames, newName) => {
-    if (listName && leads.length > 0) {
-      setIsSaving(true);
-      await saveListToExcel(listName, leads, settings.saveDirectory);
-      setIsSaving(false);
-    }
-    
-    setIsLoadingLeads(true);
-    let allLeads = [];
-    for (const name of listNames) {
-      const loaded = await loadListFromExcel({ name }, settings.saveDirectory);
-      if (loaded) {
-        allLeads = [...allLeads, ...loaded];
-      }
-    }
-    
-    allLeads = deduplicateLeads(allLeads);
-    
-    setLeads(allLeads);
-    setListName(newName);
-    setActiveView('leads');
-    setIsLoadingLeads(false);
-    setIsSidebarOpen(false);
-  };
-
 
 
   // Rename
@@ -506,6 +481,47 @@ export default function App() {
   const handleAddCity = (countryName, cityName) => {
     setCoverageData(prev => addCity(prev, countryName, cityName));
   };
+  
+  const handleAddCityWithMerge = async (countryName, cityName, listsToMerge) => {
+    // 1. Add city to coverage map
+    handleAddCity(countryName, cityName);
+    
+    if (!listsToMerge || listsToMerge.length === 0) return;
+
+    // We need generateListName. Let's import it if not imported, or just re-implement:
+    const sanitize = (str) => str.replace(/[^a-zA-Z0-9_\-\s\u00C0-\u024F]/g, '').replace(/\s+/g, '_').substring(0, 30);
+    const linkedList = `${sanitize(selectedNiche)}-${sanitize(countryName)}-${sanitize(cityName)}`;
+
+    setDialogState({
+      isOpen: true,
+      type: 'alert',
+      title: 'Merging Lists...',
+      message: `Merging ${listsToMerge.length} lists into ${linkedList}. Please wait.`,
+      confirmText: '...'
+    });
+
+    let allLeads = [];
+    for (const listName of listsToMerge) {
+      const loaded = await loadListFromExcel({ name: listName }, settings.saveDirectory);
+      if (loaded) {
+        allLeads = [...allLeads, ...loaded];
+      }
+    }
+
+    const deduped = deduplicateLeads(allLeads);
+    await saveListToExcel(linkedList, deduped, settings.saveDirectory);
+
+    // Remove the old versions from the DB so no data is duplicated
+    for (const listName of listsToMerge) {
+      await deleteSavedList(listName, settings.saveDirectory);
+    }
+    
+    refreshSavedLists();
+    
+    // Close the dialog automatically
+    setDialogState({ isOpen: false });
+  };
+
   const handleRemoveCity = async (countryName, cityName, deleteFiles = false) => {
     if (deleteFiles) {
       const city = coverageData.countries.find(c => c.name === countryName)?.cities.find(c => c.name === cityName);
@@ -632,7 +648,6 @@ export default function App() {
             onLoadList={handleLoadList}
             onNewList={handleNewList}
             onDeleteList={handleDeleteList}
-            onMergeLists={handleMergeLists}
             saveDirectory={settings.saveDirectory}
             onSaveDirectoryChange={(dir) => setSettings({ ...settings, saveDirectory: dir })}
             filePath={filePath}
@@ -794,6 +809,7 @@ export default function App() {
               onAddCountry={handleAddCountry}
               onRemoveCountry={handleRemoveCountry}
               onAddCity={handleAddCity}
+              onAddCityWithMerge={handleAddCityWithMerge}
               onRemoveCity={handleRemoveCity}
               onToggleScan={handleToggleScan}
               onOpenCityList={handleOpenCityList}

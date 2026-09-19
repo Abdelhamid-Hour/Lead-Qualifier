@@ -14,6 +14,7 @@ export default function CoverageMap({
   onAddCountry, 
   onRemoveCountry, 
   onAddCity, 
+  onAddCityWithMerge,
   onRemoveCity, 
   onToggleScan, 
   onOpenCityList,
@@ -31,6 +32,7 @@ export default function CoverageMap({
   const [collapsedCountries, setCollapsedCountries] = useState({});
   const [editingNoteFor, setEditingNoteFor] = useState(null);
   const [noteInput, setNoteInput] = useState('');
+  const [mergeLists, setMergeLists] = useState([]);
 
   const niches = coverageData.niches || [];
   const countries = coverageData.countries || [];
@@ -133,9 +135,16 @@ export default function CoverageMap({
       onShowDialog({ type: 'alert', title: 'City Exists', message: `"${trimmed}" already exists in ${countryName}.` });
       return;
     }
-    onAddCity(countryName, trimmed);
+    
+    if (mergeLists.length > 0 && onAddCityWithMerge) {
+      onAddCityWithMerge(countryName, trimmed, mergeLists);
+    } else {
+      onAddCity(countryName, trimmed);
+    }
+    
     setNewCityName('');
     setNewCityFor(null);
+    setMergeLists([]);
   };
 
   const handleDeleteCity = (countryName, cityName) => {
@@ -390,25 +399,49 @@ export default function CoverageMap({
                   
                   {/* Add City */}
                   {newCityFor === country.name ? (
-                    <div className="coverage-inline-add coverage-add-city">
-                      <input
-                        type="text"
-                        placeholder="City name..."
-                        value={newCityName}
-                        onChange={(e) => setNewCityName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAddCity(country.name);
-                          if (e.key === 'Escape') { setNewCityFor(null); setNewCityName(''); }
-                        }}
-                        className="coverage-input coverage-input-sm"
-                        autoFocus
-                      />
-                      <button className="btn btn-primary btn-sm" onClick={() => handleAddCity(country.name)}>
-                        <Plus size={14} /> Add
-                      </button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => { setNewCityFor(null); setNewCityName(''); }}>
-                        <X size={14} />
-                      </button>
+                    <div className="coverage-inline-add coverage-add-city" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px', padding: '12px', background: '#18181b', borderRadius: '6px', border: '1px solid #3f3f46' }}>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          placeholder="City name..."
+                          value={newCityName}
+                          onChange={(e) => setNewCityName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleAddCity(country.name);
+                            if (e.key === 'Escape') { setNewCityFor(null); setNewCityName(''); setMergeLists([]); }
+                          }}
+                          className="coverage-input coverage-input-sm"
+                          style={{ flex: 1 }}
+                          autoFocus
+                        />
+                        <button className="btn btn-primary btn-sm" onClick={() => handleAddCity(country.name)}>
+                          <Plus size={14} /> Add
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => { setNewCityFor(null); setNewCityName(''); setMergeLists([]); }}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                      
+                      {savedLists && savedLists.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                          <label style={{ fontSize: '0.8rem', color: '#a1a1aa' }}>Merge existing lists (optional):</label>
+                          <div style={{ maxHeight: '100px', overflowY: 'auto', background: '#27272a', border: '1px solid #3f3f46', borderRadius: '4px', padding: '4px' }}>
+                            {savedLists.map(list => (
+                              <label key={list.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                <input 
+                                  type="checkbox" 
+                                  checked={mergeLists.includes(list.name)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setMergeLists([...mergeLists, list.name]);
+                                    else setMergeLists(mergeLists.filter(n => n !== list.name));
+                                  }}
+                                />
+                                {list.name}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <button 

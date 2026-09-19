@@ -8,7 +8,6 @@ export default function SavedLists({
   onLoadList,
   onNewList,
   onDeleteList,
-  onMergeLists,
   saveDirectory,
   onSaveDirectoryChange,
   filePath,
@@ -60,73 +59,17 @@ export default function SavedLists({
     setTimeout(() => setBackupStatus(''), 5000);
   };
 
-  const [isMergeMode, setIsMergeMode] = useState(false);
-  const [selectedForMerge, setSelectedForMerge] = useState([]);
-  const [mergedName, setMergedName] = useState('');
-
-  const handleMergeToggle = () => {
-    setIsMergeMode(!isMergeMode);
-    setSelectedForMerge([]);
-    setMergedName('');
-  };
-
-  const handleSelectForMerge = (name) => {
-    if (selectedForMerge.includes(name)) {
-      setSelectedForMerge(selectedForMerge.filter(n => n !== name));
-    } else {
-      setSelectedForMerge([...selectedForMerge, name]);
-    }
-  };
-
   return (
     <div className="saved-lists-sidebar">
       <div className="sidebar-header" style={{ marginBottom: '8px' }}>
         <h3><FileText size={16} /> Your Lists</h3>
       </div>
 
-      {!isMergeMode ? (
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="btn btn-primary btn-new-list" style={{ flex: 1 }} onClick={onNewList}>
-            <Plus size={16} /> New List
-          </button>
-          <button className="btn btn-secondary" onClick={handleMergeToggle} title="Merge Lists">
-            <Copy size={16} />
-          </button>
-        </div>
-      ) : (
-        <div className="merge-mode-actions" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
-          <input
-            type="text"
-            className="search-input"
-            placeholder="New merged list name..."
-            value={mergedName}
-            onChange={(e) => setMergedName(e.target.value)}
-          />
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button 
-              className="btn btn-primary" 
-              style={{ flex: 1, padding: '6px' }}
-              onClick={() => {
-                if (mergedName && selectedForMerge.length > 1) {
-                  // Call merge prop which will be passed from App.jsx
-                  if (onMergeLists) {
-                    onMergeLists(selectedForMerge, mergedName);
-                    handleMergeToggle();
-                  }
-                }
-              }}
-              disabled={!mergedName || selectedForMerge.length < 2}
-            >
-              Merge ({selectedForMerge.length})
-            </button>
-            <button className="btn btn-secondary" onClick={handleMergeToggle} style={{ padding: '6px' }}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <button className="btn btn-primary btn-new-list" onClick={onNewList}>
+        <Plus size={16} /> New List
+      </button>
 
-      <div className="search-input-wrapper" style={{ marginTop: '12px' }}>
+      <div className="search-input-wrapper">
         <Search size={14} />
         <input
           type="text"
@@ -143,49 +86,24 @@ export default function SavedLists({
           <div
             key={list.name}
             className={`saved-file-item-container ${list.name === currentListName ? 'active' : ''}`}
-            onClick={() => {
-              if (isMergeMode) {
-                handleSelectForMerge(list.name);
-              }
-            }}
-            style={isMergeMode ? { cursor: 'pointer' } : {}}
           >
-            {isMergeMode && (
-              <input 
-                type="checkbox" 
-                checked={selectedForMerge.includes(list.name)}
-                readOnly
-                style={{ marginLeft: '8px', pointerEvents: 'none' }}
-              />
-            )}
             <button
               className="saved-file-item"
-              onClick={(e) => {
-                if (isMergeMode) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleSelectForMerge(list.name);
-                } else {
-                  onLoadList(list);
-                }
-              }}
+              onClick={() => onLoadList(list)}
               title={list.name}
-              style={isMergeMode ? { pointerEvents: 'none' } : {}}
             >
               <FileText size={16} className="sidebar-icon" /> {list.name}
             </button>
-            {!isMergeMode && (
-              <button
-                className="delete-list-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteList(list);
-                }}
-                title="Delete List"
-              >
-                <Trash2 size={16} />
-              </button>
-            )}
+            <button
+              className="delete-list-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteList(list);
+              }}
+              title="Delete List"
+            >
+              <Trash2 size={16} />
+            </button>
           </div>
         ))}
         {filteredLists.length === 0 && (
