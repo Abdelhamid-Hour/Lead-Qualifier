@@ -13,7 +13,7 @@ import { selectSaveFolder, saveListToExcel, loadSavedLists, loadListFromExcel, h
 import { DEFAULT_MESSAGES, DEFAULT_SOCIAL_DOMAINS, DEFAULT_SAAS_DOMAINS, personalizeMessage } from './utils/constants.js';
 import { loadCoverage, saveCoverage, addNiche, removeNiche, addCountry, removeCountry, addCity, removeCity, toggleScan, updateCityNote } from './utils/coverageManager.js';
 
-import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X, Clock } from 'lucide-react';
+import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X, Clock, Layers } from 'lucide-react';
 import Dialog from './components/Dialog.jsx';
 import { loadDBSettings, saveDBSettings } from './utils/settingsManager.js';
 import { loadAllContactedLeads, markAsContacted } from './utils/contactedManager.js';
@@ -34,6 +34,18 @@ function getInitialSettings() {
     saveDirectory: ''
   };
 }
+
+const deduplicateLeads = (leadsList) => {
+  const seen = new Set();
+  return leadsList.filter(l => {
+    const key = `${l.name || ''}|${l.phone || ''}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+};
 
 export default function App() {
   const [settings, setSettings] = useState(getInitialSettings);
@@ -245,20 +257,20 @@ export default function App() {
     });
 
     const processLeads = (replace) => {
+      let finalLeads = [];
       if (replace) {
-        setLeads(classified);
+        finalLeads = deduplicateLeads(classified);
       } else {
-        const existingKeys = new Set(leads.map(l => l.name + l.phone));
-        const newLeads = classified.filter(l => !existingKeys.has(l.name + l.phone));
-        setLeads(prev => [...prev, ...newLeads]);
+        finalLeads = deduplicateLeads([...leads, ...classified]);
       }
+      setLeads(finalLeads);
       
       if (!listName && replace) {
         const now = new Date();
         const defaultName = `Leads_${now.toISOString().slice(0, 10)}_${now.getHours()}h${String(now.getMinutes()).padStart(2, '0')}`;
         setListName(defaultName);
       }
-      checkHealth(classified);
+      checkHealth(finalLeads);
     };
 
     // Merge with existing or create new list
@@ -658,14 +670,27 @@ export default function App() {
                     </span>
                   )}
                   {leads.length > 0 && (
-                    <button 
-                      onClick={() => downloadExcel(listName, leads)}
-                      className="btn btn-secondary"
-                      style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}
-                      title="Download as Excel File"
-                    >
-                      <Download size={14} /> Download .xlsx
-                    </button>
+                    <>
+                      <button 
+                        onClick={() => {
+                          const deduped = deduplicateLeads(leads);
+                          setLeads(deduped);
+                        }}
+                        className="btn btn-secondary"
+                        style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}
+                        title="Remove Duplicates"
+                      >
+                        <Layers size={14} /> Deduplicate
+                      </button>
+                      <button 
+                        onClick={() => downloadExcel(listName, leads)}
+                        className="btn btn-secondary"
+                        style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px' }}
+                        title="Download as Excel File"
+                      >
+                        <Download size={14} /> Download .xlsx
+                      </button>
+                    </>
                   )}
                 </div>
                 <div className="list-actions">
