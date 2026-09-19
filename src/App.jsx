@@ -428,6 +428,31 @@ export default function App() {
     });
   };
 
+  const handleMergeLists = async (listNames, newName) => {
+    if (listName && leads.length > 0) {
+      setIsSaving(true);
+      await saveListToExcel(listName, leads, settings.saveDirectory);
+      setIsSaving(false);
+    }
+    
+    setIsLoadingLeads(true);
+    let allLeads = [];
+    for (const name of listNames) {
+      const loaded = await loadListFromExcel({ name }, settings.saveDirectory);
+      if (loaded) {
+        allLeads = [...allLeads, ...loaded];
+      }
+    }
+    
+    allLeads = deduplicateLeads(allLeads);
+    
+    setLeads(allLeads);
+    setListName(newName);
+    setActiveView('leads');
+    setIsLoadingLeads(false);
+    setIsSidebarOpen(false);
+  };
+
 
 
   // Rename
@@ -607,6 +632,7 @@ export default function App() {
             onLoadList={handleLoadList}
             onNewList={handleNewList}
             onDeleteList={handleDeleteList}
+            onMergeLists={handleMergeLists}
             saveDirectory={settings.saveDirectory}
             onSaveDirectoryChange={(dir) => setSettings({ ...settings, saveDirectory: dir })}
             filePath={filePath}
