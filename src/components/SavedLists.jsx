@@ -50,7 +50,7 @@ export default function SavedLists({
     setBackupStatus('Restoring...');
     const result = await restoreFromBackup(file);
     if (result.success) {
-      setBackupStatus(`✅ Restored: ${result.restoredLists} lists, ${result.restoredLeads} leads`);
+      setBackupStatus(`✅ Restored: ${result.restoredLists} lists, ${result.restoredLeads} leads${result.skippedLeads ? ` (${result.skippedLeads} duplicates skipped)` : ''}`);
       if (onBackupRestored) onBackupRestored();
     } else {
       setBackupStatus(`❌ Restore failed: ${result.error}`);

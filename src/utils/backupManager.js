@@ -44,6 +44,11 @@ export async function downloadFullBackup() {
 /**
  * Restores data from a backup JSON file.
  * MERGES with existing data (does not wipe what's already there).
+ * 
+ * Strategy:
+ * - For each list in the backup, find an existing list by name or create a new one.
+ * - For each lead, strip the old id and list_id, assign the correct new list_id, and insert.
+ * - Skip leads whose phone+list already exist to avoid duplicates.
  */
 export async function restoreFromBackup(file) {
   try {
@@ -56,51 +61,94 @@ export async function restoreFromBackup(file) {
 
     let restoredLists = 0;
     let restoredLeads = 0;
-    const listIdMap = {}; // Map backup list IDs to actual DB list IDs
+    let skippedLeads = 0;
+    const listIdMap = {}; // Maps old backup list_id -> new DB list_id
 
-    // Restore lists (upsert to avoid duplicates)
+    // Step 1: Restore lists — find by name or create new
     for (const list of backup.lists) {
-      const { data: existing } = await supabase
+      const listName = list.name;
+      if (!listName) continue;
+
+      // Check if a list with this name already exists
+      const { data: existing, error: findErr } = await supabase
         .from('lists')
         .select('id')
-        .eq('name', list.name)
-        .single();
+        .eq('name', listName)
+        .limit(1);
 
-      if (!existing) {
-        const { error } = await supabase.from('lists').insert({
-          id: list.id,
-          name: list.name,
-          created_at: list.created_at
-        });
-        if (!error) {
-          listIdMap[list.id] = list.id;
+      if (findErr) {
+        console.error('Error finding list:', listName, findErr);
+        continue;
+      }
+
+      if (existing && existing.length > 0) {
+        // List exists — map old ID to existing ID
+        listIdMap[list.id] = existing[0].id;
+        restoredLists++;
+      } else {
+        // List doesn't exist — create it (let DB generate a new ID)
+        const { data: newList, error: insertErr } = await supabase
+          .from('lists')
+          .insert({ name: listName, created_at: list.created_at || new Date().toISOString() })
+          .select('id')
+          .limit(1);
+
+        if (insertErr) {
+          console.error('Error creating list:', listName, insertErr);
+          continue;
+        }
+        if (newList && newList.length > 0) {
+          listIdMap[list.id] = newList[0].id;
           restoredLists++;
         }
-      } else {
-        listIdMap[list.id] = existing.id; // Map old backup ID to existing DB ID
-        restoredLists++;
       }
     }
 
-    // Restore leads (bulk upsert to avoid rate limits and improve speed)
-    const validLeads = [];
-    for (const lead of backup.leads) {
-      if (listIdMap[lead.list_id]) {
-        lead.list_id = listIdMap[lead.list_id];
-        validLeads.push(lead);
-      }
-    }
+    // Step 2: Restore leads — group by list, then bulk insert
+    // First, get existing leads per list to avoid duplicates (match by phone)
+    for (const [oldListId, newListId] of Object.entries(listIdMap)) {
+      const leadsForList = backup.leads.filter(l => String(l.list_id) === String(oldListId));
+      if (leadsForList.length === 0) continue;
 
-    if (validLeads.length > 0) {
-      // Supabase bulk upsert can handle arrays
-      // We process in chunks of 500 to avoid request size limits
+      // Get existing phones in this list to skip duplicates
+      const { data: existingLeads } = await supabase
+        .from('leads')
+        .select('phone')
+        .eq('list_id', newListId);
+      
+      const existingPhones = new Set((existingLeads || []).map(l => l.phone).filter(Boolean));
+
+      // Filter out duplicates and prepare clean leads (no old id)
+      const newLeads = [];
+      for (const lead of leadsForList) {
+        if (lead.phone && existingPhones.has(lead.phone)) {
+          skippedLeads++;
+          continue;
+        }
+        
+        // Build a clean lead object without the old id — let DB auto-generate
+        newLeads.push({
+          list_id: newListId,
+          name: lead.name || '',
+          type: lead.type || '',
+          phone: lead.phone || '',
+          rating: lead.rating || '',
+          reviews: lead.reviews || '',
+          website: lead.website || '',
+          gmaps_link: lead.gmaps_link || lead.gmapsLink || '',
+          category: lead.category || 'not_checked',
+          message: lead.message || '',
+          wa_link: lead.wa_link || lead.waLink || ''
+        });
+      }
+
+      if (newLeads.length === 0) continue;
+
+      // Bulk insert in chunks of 500
       const chunkSize = 500;
-      for (let i = 0; i < validLeads.length; i += chunkSize) {
-        const chunk = validLeads.slice(i, i + chunkSize);
-        const { data, error } = await supabase
-          .from('leads')
-          .upsert(chunk, { onConflict: 'id' });
-          
+      for (let i = 0; i < newLeads.length; i += chunkSize) {
+        const chunk = newLeads.slice(i, i + chunkSize);
+        const { error } = await supabase.from('leads').insert(chunk);
         if (!error) {
           restoredLeads += chunk.length;
         } else {
@@ -109,17 +157,17 @@ export async function restoreFromBackup(file) {
       }
     }
 
-    // Restore coverage
+    // Step 3: Restore coverage
     if (backup.coverage && backup.coverage.length > 0) {
       await supabase.from('coverage').upsert(backup.coverage[0]);
     }
 
-    // Restore settings
+    // Step 4: Restore settings
     if (backup.settings && backup.settings.length > 0) {
       await supabase.from('settings').upsert(backup.settings[0]);
     }
 
-    return { success: true, restoredLists, restoredLeads };
+    return { success: true, restoredLists, restoredLeads, skippedLeads };
   } catch (err) {
     console.error('Restore error:', err);
     return { success: false, error: err.message };
