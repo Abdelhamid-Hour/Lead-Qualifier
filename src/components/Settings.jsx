@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Settings as SettingsIcon, ChevronDown, ChevronUp, RotateCcw, Globe, RefreshCw, Zap, FileEdit, Palette } from 'lucide-react';
+import { DEFAULT_TEMPLATES } from '../utils/constants.js';
 
 export default function Settings({ settings, onUpdateSettings, onResetSettings }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('domains');
+  const [editLang, setEditLang] = useState(settings.activeLanguage || 'fr');
 
   const handleDomainChange = (field, value) => {
     const domains = value.split('\n').map(d => d.trim()).filter(Boolean);
@@ -13,8 +15,22 @@ export default function Settings({ settings, onUpdateSettings, onResetSettings }
   const handleMessageChange = (key, value) => {
     onUpdateSettings({
       ...settings,
-      messages: { ...settings.messages, [key]: value }
+      messageLanguages: {
+        ...settings.messageLanguages,
+        [editLang]: {
+          ...(settings.messageLanguages?.[editLang] || {}),
+          [key]: value
+        }
+      }
     });
+  };
+
+  const handleActiveLangChange = (lang) => {
+    onUpdateSettings({
+      ...settings,
+      activeLanguage: lang
+    });
+    setEditLang(lang); // Automatically switch editor to active language
   };
 
   const catLabels = {
@@ -73,13 +89,41 @@ export default function Settings({ settings, onUpdateSettings, onResetSettings }
 
           {activeTab === 'messages' && (
             <div className="settings-messages">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ margin: 0, fontWeight: 'bold' }}>Active Target Language:</label>
+                  <select 
+                    value={settings.activeLanguage || 'fr'} 
+                    onChange={(e) => handleActiveLangChange(e.target.value)}
+                    style={{ padding: '4px 8px', borderRadius: '4px', background: '#27272a', border: '1px solid #3f3f46', color: 'white' }}
+                  >
+                    {Object.entries(DEFAULT_TEMPLATES).map(([key, tpl]) => (
+                      <option key={key} value={key}>{tpl.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ margin: 0 }}>Editing Language:</label>
+                  <select 
+                    value={editLang} 
+                    onChange={(e) => setEditLang(e.target.value)}
+                    style={{ padding: '4px 8px', borderRadius: '4px', background: '#27272a', border: '1px solid #3f3f46', color: 'white' }}
+                  >
+                    {Object.entries(DEFAULT_TEMPLATES).map(([key, tpl]) => (
+                      <option key={key} value={key}>{tpl.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               {['cat1', 'cat2', 'cat3', 'cat4', 'cat6'].map(key => (
                 <div className="message-group" key={key}>
                   <label>{catLabels[key].icon} {catLabels[key].label} Message</label>
                   <textarea
-                    value={settings.messages[key] || ''}
+                    value={settings.messageLanguages?.[editLang]?.[key] || ''}
                     onChange={(e) => handleMessageChange(key, e.target.value)}
                     rows={4}
+                    placeholder={`Write your message for ${DEFAULT_TEMPLATES[editLang]?.name} here...`}
                   />
                 </div>
               ))}

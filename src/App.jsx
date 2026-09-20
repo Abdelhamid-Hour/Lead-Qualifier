@@ -10,7 +10,7 @@ import { parseGoogleMapsHTML } from './utils/parser.js';
 import { autoClassify, checkWebsiteHealth } from './utils/classifier.js';
 import { buildWhatsAppLink } from './utils/phoneUtils.js';
 import { selectSaveFolder, saveListToExcel, loadSavedLists, loadListFromExcel, hasFolderAccess, deleteSavedList, downloadExcel } from './utils/fileManager.js';
-import { DEFAULT_MESSAGES, DEFAULT_SOCIAL_DOMAINS, DEFAULT_SAAS_DOMAINS, personalizeMessage } from './utils/constants.js';
+import { DEFAULT_MESSAGES_FR, DEFAULT_MESSAGES_EN, DEFAULT_TEMPLATES, DEFAULT_SOCIAL_DOMAINS, DEFAULT_SAAS_DOMAINS, personalizeMessage } from './utils/constants.js';
 import { loadCoverage, saveCoverage, addNiche, removeNiche, addCountry, removeCountry, addCity, removeCity, toggleScan, updateCityNote } from './utils/coverageManager.js';
 
 import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X, Clock, Layers } from 'lucide-react';
@@ -25,12 +25,30 @@ const LAST_LIST_KEY = 'lq_last_list';
 function getInitialSettings() {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!parsed.messageLanguages) {
+        parsed.messageLanguages = {
+          fr: parsed.messages || { ...DEFAULT_MESSAGES_FR },
+          en: { ...DEFAULT_MESSAGES_EN },
+          es: { ...DEFAULT_TEMPLATES.es.messages },
+          de: { ...DEFAULT_TEMPLATES.de.messages }
+        };
+        parsed.activeLanguage = 'fr';
+      }
+      return parsed;
+    }
   } catch {}
   return {
     socialDomains: [...DEFAULT_SOCIAL_DOMAINS],
     saasDomains: [...DEFAULT_SAAS_DOMAINS],
-    messages: { ...DEFAULT_MESSAGES },
+    activeLanguage: 'fr',
+    messageLanguages: {
+      fr: { ...DEFAULT_MESSAGES_FR },
+      en: { ...DEFAULT_MESSAGES_EN },
+      es: { ...DEFAULT_TEMPLATES.es.messages },
+      de: { ...DEFAULT_TEMPLATES.de.messages }
+    },
     saveDirectory: ''
   };
 }
@@ -91,16 +109,17 @@ export default function App() {
   }, [settings]);
 
   // Recalculate lead messages when templates change
-  const prevMessagesRef = useRef(JSON.stringify(settings.messages));
+  const prevMessagesRef = useRef(JSON.stringify({ lang: settings.activeLanguage, msgs: settings.messageLanguages }));
   useEffect(() => {
-    const currentMessages = JSON.stringify(settings.messages);
+    const currentMessages = JSON.stringify({ lang: settings.activeLanguage, msgs: settings.messageLanguages });
     if (currentMessages !== prevMessagesRef.current) {
       prevMessagesRef.current = currentMessages;
+      const activeMsgs = settings.messageLanguages?.[settings.activeLanguage] || {};
       setLeads(prevLeads => {
         let changed = false;
         const newLeads = prevLeads.map(lead => {
           if (lead.category !== 'not_checked' && lead.category !== 'cat5') {
-            const newMessage = personalizeMessage(settings.messages[lead.category] || '', lead.name);
+            const newMessage = personalizeMessage(activeMsgs[lead.category] || '', lead.name);
             const newWaLink = buildWhatsAppLink(lead.phone, newMessage);
             if (lead.message !== newMessage || lead.waLink !== newWaLink) {
               changed = true;
@@ -112,7 +131,7 @@ export default function App() {
         return changed ? newLeads : prevLeads;
       });
     }
-  }, [settings.messages]);
+  }, [settings.messageLanguages, settings.activeLanguage]);
 
   // Load saved lists from directory
   const refreshSavedLists = useCallback(async () => {
@@ -246,12 +265,13 @@ export default function App() {
     }
 
     // Auto-classify
+    const activeMsgs = settings.messageLanguages?.[settings.activeLanguage] || {};
     const classified = parsed.map(lead => {
       const category = autoClassify(lead, settings);
       let message = '';
       let waLink = '';
       if (category !== 'not_checked' && category !== 'cat5') {
-        message = personalizeMessage(settings.messages[category] || '', lead.name);
+        message = personalizeMessage(activeMsgs[category] || '', lead.name);
         waLink = buildWhatsAppLink(lead.phone, message);
       }
       return { ...lead, category, message, waLink };
@@ -306,7 +326,8 @@ export default function App() {
           setLeads(prev => prev.map(l => {
             // Only update if the user hasn't manually changed it already
             if (l.id === lead.id && l.category === 'not_checked') {
-              const message = personalizeMessage(settings.messages.cat3 || '', l.name);
+              const activeMsgs = settings.messageLanguages?.[settings.activeLanguage] || {};
+              const message = personalizeMessage(activeMsgs.cat3 || '', l.name);
               const waLink = buildWhatsAppLink(l.phone, message);
               return { ...l, category: 'cat3', message, waLink };
             }
@@ -779,7 +800,7 @@ export default function App() {
                     leads={leads}
                     onUpdateLead={handleUpdateLead}
                     onDeleteLead={handleDeleteLead}
-                    messages={settings.messages}
+                    messages={settings.messageLanguages?.[settings.activeLanguage] || {}}
                     searchQuery={searchQuery}
                     showWithWaOnly={showWithWaOnly}
                     contactedSet={contactedSet}
