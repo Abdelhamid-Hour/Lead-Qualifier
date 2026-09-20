@@ -880,21 +880,21 @@ export default function App() {
                       >
                         <Download size={14} /> Download .xlsx
                       </button>
-                      <label 
-                        className="btn btn-secondary"
-                        style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px', cursor: 'pointer' }}
-                        title="Import Leads from Excel"
-                      >
-                        <Upload size={14} /> Import .xlsx
-                        <input 
-                          type="file" 
-                          accept=".xlsx,.xls" 
-                          style={{ display: 'none' }} 
-                          onChange={handleImportExcel} 
-                        />
-                      </label>
                     </>
                   )}
+                  <label 
+                    className="btn btn-secondary"
+                    style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px', cursor: 'pointer' }}
+                    title="Import Leads from Excel"
+                  >
+                    <Upload size={14} /> Import .xlsx
+                    <input 
+                      type="file" 
+                      accept=".xlsx,.xls" 
+                      style={{ display: 'none' }} 
+                      onChange={handleImportExcel} 
+                    />
+                  </label>
                 </div>
                 <div className="list-actions">
                   <div className="filter-wa-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginRight: '16px' }}>
