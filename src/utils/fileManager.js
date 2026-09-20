@@ -56,31 +56,61 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
       }
     }
 
-    // Remove old leads
-    const { error: deleteErr } = await supabase.from('leads').delete().eq('list_id', listId);
-    if (deleteErr) throw deleteErr;
+    // 1. Fetch current IDs from DB
+    const { data: existingIdsData, error: fetchErr } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('list_id', listId);
+    
+    if (fetchErr) throw fetchErr;
+    const existingDbIds = existingIdsData.map(row => row.id);
 
-    // Insert new leads
+    // 2. Format leads for upsert
+    const currentLeadIds = new Set();
+    const leadsToUpsert = [];
+    
     if (leads.length > 0) {
-      const leadsToInsert = leads.map(l => ({
-        list_id: listId,
-        name: l.name ? String(l.name) : '',
-        type: l.type ? String(l.type) : '',
-        phone: l.phone ? String(l.phone) : '',
-        rating: l.rating ? String(l.rating) : '',
-        reviews: l.reviews ? String(l.reviews) : '',
-        website: l.website ? String(l.website) : '',
-        gmaps_link: l.gmapsLink ? String(l.gmapsLink) : '',
-        category: l.category ? String(l.category) : 'not_checked',
-        message: l.message ? String(l.message) : '',
-        wa_link: l.waLink ? String(l.waLink) : ''
-      }));
+      for (const l of leads) {
+        const id = l.id || crypto.randomUUID();
+        currentLeadIds.add(id);
+        leadsToUpsert.push({
+          id: id,
+          list_id: listId,
+          name: l.name ? String(l.name) : '',
+          type: l.type ? String(l.type) : '',
+          phone: l.phone ? String(l.phone) : '',
+          rating: l.rating ? String(l.rating) : '',
+          reviews: l.reviews ? String(l.reviews) : '',
+          website: l.website ? String(l.website) : '',
+          gmaps_link: l.gmapsLink ? String(l.gmapsLink) : '',
+          category: l.category ? String(l.category) : 'not_checked',
+          message: l.message ? String(l.message) : '',
+          wa_link: l.waLink ? String(l.waLink) : ''
+        });
+      }
       
+      // 3. Upsert leads in chunks
       const CHUNK_SIZE = 500;
-      for (let i = 0; i < leadsToInsert.length; i += CHUNK_SIZE) {
-        const chunk = leadsToInsert.slice(i, i + CHUNK_SIZE);
-        const { error: insertErr } = await supabase.from('leads').insert(chunk);
-        if (insertErr) throw insertErr;
+      for (let i = 0; i < leadsToUpsert.length; i += CHUNK_SIZE) {
+        const chunk = leadsToUpsert.slice(i, i + CHUNK_SIZE);
+        const { error: upsertErr } = await supabase.from('leads').upsert(chunk);
+        if (upsertErr) throw upsertErr;
+      }
+    }
+
+    // 4. Identify obsolete IDs to delete
+    const idsToDelete = existingDbIds.filter(id => !currentLeadIds.has(id));
+    
+    // 5. Delete obsolete IDs in chunks
+    if (idsToDelete.length > 0) {
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < idsToDelete.length; i += CHUNK_SIZE) {
+        const deleteChunk = idsToDelete.slice(i, i + CHUNK_SIZE);
+        const { error: deleteErr } = await supabase
+          .from('leads')
+          .delete()
+          .in('id', deleteChunk);
+        if (deleteErr) throw deleteErr;
       }
     }
     return { path: cleanName };

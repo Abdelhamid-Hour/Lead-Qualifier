@@ -735,9 +735,13 @@ export default function App() {
     await saveListToExcel(linkedList, deduped, settings.saveDirectory);
 
     // Remove the old versions from the DB so no data is duplicated
-    for (const listName of listsToMerge) {
-      await deleteSavedList(listName, settings.saveDirectory);
+    for (const name of listsToMerge) {
+      await deleteSavedList(name, settings.saveDirectory);
     }
+    
+    // Switch the active view to the newly merged list to prevent auto-save from resurrecting deleted lists
+    setListName(linkedList);
+    setLeads(deduped);
     
     refreshSavedLists();
     
