@@ -64,19 +64,24 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
     if (leads.length > 0) {
       const leadsToInsert = leads.map(l => ({
         list_id: listId,
-        name: l.name,
-        type: l.type || '',
-        phone: l.phone || '',
-        rating: l.rating || '',
-        reviews: l.reviews || '',
-        website: l.website || '',
-        gmaps_link: l.gmapsLink || '',
-        category: l.category || 'not_checked',
-        message: l.message || '',
-        wa_link: l.waLink || ''
+        name: l.name ? String(l.name) : '',
+        type: l.type ? String(l.type) : '',
+        phone: l.phone ? String(l.phone) : '',
+        rating: l.rating ? String(l.rating) : '',
+        reviews: l.reviews ? String(l.reviews) : '',
+        website: l.website ? String(l.website) : '',
+        gmaps_link: l.gmapsLink ? String(l.gmapsLink) : '',
+        category: l.category ? String(l.category) : 'not_checked',
+        message: l.message ? String(l.message) : '',
+        wa_link: l.waLink ? String(l.waLink) : ''
       }));
-      const { error: insertErr } = await supabase.from('leads').insert(leadsToInsert);
-      if (insertErr) throw insertErr;
+      
+      const CHUNK_SIZE = 500;
+      for (let i = 0; i < leadsToInsert.length; i += CHUNK_SIZE) {
+        const chunk = leadsToInsert.slice(i, i + CHUNK_SIZE);
+        const { error: insertErr } = await supabase.from('leads').insert(chunk);
+        if (insertErr) throw insertErr;
+      }
     }
     return { path: cleanName };
   } catch (err) {
