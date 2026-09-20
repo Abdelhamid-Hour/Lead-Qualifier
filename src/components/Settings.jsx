@@ -101,6 +101,16 @@ export default function Settings({ settings, onUpdateSettings, onResetSettings }
                     ))}
                   </select>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{ margin: 0, fontWeight: 'bold' }}>Default Phone Code:</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. +212"
+                    value={settings.defaultCountryCode || ''}
+                    onChange={(e) => onUpdateSettings({ ...settings, defaultCountryCode: e.target.value })}
+                    style={{ padding: '4px 8px', width: '90px', borderRadius: '4px', background: '#27272a', border: '1px solid #3f3f46', color: 'white' }}
+                  />
+                </div>
               </div>
 
               {['cat1', 'cat2', 'cat3', 'cat4', 'cat6'].map(key => (

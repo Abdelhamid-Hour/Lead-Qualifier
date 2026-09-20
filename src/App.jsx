@@ -50,6 +50,10 @@ function getInitialSettings() {
             }
           }
         }
+        // Ensure defaultCountryCode exists
+        if (parsed.defaultCountryCode === undefined) {
+          parsed.defaultCountryCode = ''; // No default by default
+        }
       }
       return parsed;
     }
@@ -59,6 +63,7 @@ function getInitialSettings() {
     saasDomains: [...DEFAULT_SAAS_DOMAINS],
     activeLanguage: 'fr',
     messageLanguages: defaultMessageLanguages,
+    defaultCountryCode: '',
     saveDirectory: ''
   };
 }
@@ -153,7 +158,7 @@ export default function App() {
         const newLeads = prevLeads.map(lead => {
           if (lead.category !== 'not_checked' && lead.category !== 'cat5') {
             const newMessage = personalizeMessage(activeMsgs[lead.category] || '', lead.name);
-            const newWaLink = buildWhatsAppLink(lead.phone, newMessage);
+            const newWaLink = buildWhatsAppLink(lead.phone, newMessage, settings.defaultCountryCode);
             if (lead.message !== newMessage || lead.waLink !== newWaLink) {
               changed = true;
               return { ...lead, message: newMessage, waLink: newWaLink };
@@ -305,7 +310,7 @@ export default function App() {
       let waLink = '';
       if (category !== 'not_checked' && category !== 'cat5') {
         message = personalizeMessage(activeMsgs[category] || '', lead.name);
-        waLink = buildWhatsAppLink(lead.phone, message);
+        waLink = buildWhatsAppLink(lead.phone, message, settings.defaultCountryCode);
       }
       return { ...lead, category, message, waLink };
     });
@@ -361,7 +366,7 @@ export default function App() {
             if (l.id === lead.id && l.category === 'not_checked') {
               const activeMsgs = settings.messageLanguages?.[settings.activeLanguage] || {};
               const message = personalizeMessage(activeMsgs.cat3 || '', l.name);
-              const waLink = buildWhatsAppLink(l.phone, message);
+              const waLink = buildWhatsAppLink(l.phone, message, settings.defaultCountryCode);
               return { ...l, category: 'cat3', message, waLink };
             }
             return l;
@@ -527,7 +532,7 @@ export default function App() {
         else type = row[1] || '';
 
         const generatedMessage = personalizeMessage(activeMsgs[category] || '', name);
-        waLink = buildWhatsAppLink(phone, generatedMessage);
+        waLink = buildWhatsAppLink(phone, generatedMessage, settings.defaultCountryCode);
         
         newLeads.push({
           id: crypto.randomUUID(),
@@ -932,6 +937,7 @@ export default function App() {
                     onUpdateLead={handleUpdateLead}
                     onDeleteLead={handleDeleteLead}
                     messages={settings.messageLanguages?.[settings.activeLanguage] || {}}
+                    defaultCountryCode={settings.defaultCountryCode}
                     searchQuery={searchQuery}
                     showWithWaOnly={showWithWaOnly}
                     contactedSet={contactedSet}

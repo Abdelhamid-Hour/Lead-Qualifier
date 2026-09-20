@@ -3,7 +3,7 @@ import { CATEGORY_LABELS, CATEGORY_COLORS, personalizeMessage } from '../utils/c
 import { buildWhatsAppLink } from '../utils/phoneUtils.js';
 import { ExternalLink, MessageCircle, MapPin, Star, Trash2, CheckCircle2 } from 'lucide-react';
 
-export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, searchQuery, showWithWaOnly, contactedSet, onMarkContacted }) {
+export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, defaultCountryCode, searchQuery, showWithWaOnly, contactedSet, onMarkContacted }) {
   const filteredLeads = useMemo(() => {
     let result = leads;
     
@@ -29,7 +29,7 @@ export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages
       waLink = '';
     } else if (messages[newCategory]) {
       message = personalizeMessage(messages[newCategory], lead.name);
-      waLink = buildWhatsAppLink(lead.phone, message);
+      waLink = buildWhatsAppLink(lead.phone, message, defaultCountryCode);
     }
 
     onUpdateLead(lead.id, {
