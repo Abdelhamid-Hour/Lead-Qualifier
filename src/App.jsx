@@ -29,12 +29,17 @@ function getInitialSettings() {
       const parsed = JSON.parse(raw);
       if (!parsed.messageLanguages) {
         parsed.messageLanguages = {
+          ar: { ...DEFAULT_TEMPLATES.ar.messages },
+          ma: { ...DEFAULT_TEMPLATES.ma.messages },
           fr: parsed.messages || { ...DEFAULT_MESSAGES_FR },
           en: { ...DEFAULT_MESSAGES_EN },
           es: { ...DEFAULT_TEMPLATES.es.messages },
           de: { ...DEFAULT_TEMPLATES.de.messages }
         };
         parsed.activeLanguage = 'fr';
+      } else if (!parsed.messageLanguages.ma) {
+        if (!parsed.messageLanguages.ar) parsed.messageLanguages.ar = { ...DEFAULT_TEMPLATES.ar.messages };
+        if (!parsed.messageLanguages.ma) parsed.messageLanguages.ma = { ...DEFAULT_TEMPLATES.ma.messages };
       }
       return parsed;
     }
@@ -44,6 +49,8 @@ function getInitialSettings() {
     saasDomains: [...DEFAULT_SAAS_DOMAINS],
     activeLanguage: 'fr',
     messageLanguages: {
+      ar: { ...DEFAULT_TEMPLATES.ar.messages },
+      ma: { ...DEFAULT_TEMPLATES.ma.messages },
       fr: { ...DEFAULT_MESSAGES_FR },
       en: { ...DEFAULT_MESSAGES_EN },
       es: { ...DEFAULT_TEMPLATES.es.messages },
