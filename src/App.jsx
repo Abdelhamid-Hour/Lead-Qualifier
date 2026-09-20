@@ -23,23 +23,39 @@ const LAST_LIST_KEY = 'lq_last_list';
 
 // We'll still load initial default from memory while DB loads
 function getInitialSettings() {
+  const defaults = {
+    ar: { ...DEFAULT_TEMPLATES.ar.messages },
+    ma: { ...DEFAULT_TEMPLATES.ma.messages },
+    fr: { ...DEFAULT_MESSAGES_FR },
+    en: { ...DEFAULT_MESSAGES_EN },
+    es: { ...DEFAULT_MESSAGES_ES },
+    de: { ...DEFAULT_MESSAGES_DE },
+    it: { ...DEFAULT_TEMPLATES.it.messages },
+    pt: { ...DEFAULT_TEMPLATES.pt.messages },
+  };
+
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (!parsed.messageLanguages) {
-        parsed.messageLanguages = {
-          ar: { ...DEFAULT_TEMPLATES.ar.messages },
-          ma: { ...DEFAULT_TEMPLATES.ma.messages },
-          fr: parsed.messages || { ...DEFAULT_MESSAGES_FR },
-          en: { ...DEFAULT_MESSAGES_EN },
-          es: { ...DEFAULT_TEMPLATES.es.messages },
-          de: { ...DEFAULT_TEMPLATES.de.messages }
-        };
+        parsed.messageLanguages = { ...defaults };
+        if (parsed.messages) parsed.messageLanguages.fr = parsed.messages;
         parsed.activeLanguage = 'fr';
-      } else if (!parsed.messageLanguages.ma) {
-        if (!parsed.messageLanguages.ar) parsed.messageLanguages.ar = { ...DEFAULT_TEMPLATES.ar.messages };
-        if (!parsed.messageLanguages.ma) parsed.messageLanguages.ma = { ...DEFAULT_TEMPLATES.ma.messages };
+      } else {
+        // Fix empty templates that were saved previously
+        for (const lang of Object.keys(defaults)) {
+          if (!parsed.messageLanguages[lang]) {
+            parsed.messageLanguages[lang] = { ...defaults[lang] };
+          } else {
+            // Check if all messages are empty strings (this happened with old ES/DE stubs)
+            const msgs = parsed.messageLanguages[lang];
+            const isEmpty = !msgs.cat1 && !msgs.cat2 && !msgs.cat3 && !msgs.cat4 && !msgs.cat6;
+            if (isEmpty) {
+              parsed.messageLanguages[lang] = { ...defaults[lang] };
+            }
+          }
+        }
       }
       return parsed;
     }
@@ -48,14 +64,7 @@ function getInitialSettings() {
     socialDomains: [...DEFAULT_SOCIAL_DOMAINS],
     saasDomains: [...DEFAULT_SAAS_DOMAINS],
     activeLanguage: 'fr',
-    messageLanguages: {
-      ar: { ...DEFAULT_TEMPLATES.ar.messages },
-      ma: { ...DEFAULT_TEMPLATES.ma.messages },
-      fr: { ...DEFAULT_MESSAGES_FR },
-      en: { ...DEFAULT_MESSAGES_EN },
-      es: { ...DEFAULT_TEMPLATES.es.messages },
-      de: { ...DEFAULT_TEMPLATES.de.messages }
-    },
+    messageLanguages: { ...defaults },
     saveDirectory: ''
   };
 }
