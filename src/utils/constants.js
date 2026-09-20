@@ -50,12 +50,12 @@ export const DEFAULT_MESSAGES_DE = {
 export const DEFAULT_MESSAGES = DEFAULT_MESSAGES_FR;
 
 export const DEFAULT_TEMPLATES = {
-  ar: { name: 'العربية', messages: DEFAULT_MESSAGES_AR },
+  ar: { name: 'Arabe', messages: DEFAULT_MESSAGES_AR },
   ma: { name: 'Darija', messages: DEFAULT_MESSAGES_MA },
   fr: { name: 'Français', messages: DEFAULT_MESSAGES_FR },
-  en: { name: 'English', messages: DEFAULT_MESSAGES_EN },
-  es: { name: 'Español', messages: DEFAULT_MESSAGES_ES },
-  de: { name: 'Deutsch', messages: DEFAULT_MESSAGES_DE },
+  en: { name: 'Anglais', messages: DEFAULT_MESSAGES_EN },
+  es: { name: 'Espagnol', messages: DEFAULT_MESSAGES_ES },
+  de: { name: 'Allemand', messages: DEFAULT_MESSAGES_DE },
 };
 
 export const DEFAULT_SCHEDULE = [
