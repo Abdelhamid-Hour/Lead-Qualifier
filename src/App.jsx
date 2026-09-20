@@ -198,12 +198,33 @@ export default function App() {
         setFilePath(result.path);
         localStorage.setItem(LAST_LIST_KEY, listName);
         refreshSavedLists();
+      } else {
+        setDialogState({
+          isOpen: true,
+          type: 'alert',
+          title: 'Database Save Failed',
+          message: 'The app failed to save your leads to the cloud. Your list may be cleared or corrupted in the database due to network issues.\n\nPlease DO NOT close this tab! Download a manual backup of your leads, then try clicking "Refresh" or editing a lead to trigger a re-save.',
+          confirmText: 'Understood'
+        });
       }
       setIsSaving(false);
     }, 1500);
     
     return () => clearTimeout(saveTimeoutRef.current);
   }, [leads, listName, settings.saveDirectory, refreshSavedLists, filePath]);
+
+  // Warn on tab close if saving
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isSaving) {
+        e.preventDefault();
+        e.returnValue = 'Your leads are currently being saved to the database. If you leave now, you might lose data!';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isSaving]);
 
   // Initial load
   useEffect(() => {
