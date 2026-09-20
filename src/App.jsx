@@ -71,7 +71,8 @@ function getInitialSettings() {
 const deduplicateLeads = (leadsList) => {
   const seen = new Set();
   return leadsList.filter(l => {
-    const key = `${l.name || ''}|${l.phone || ''}`;
+    // Use gmapsLink to differentiate branches of the same company that don't have phone numbers
+    const key = `${l.name || ''}|${l.phone || ''}|${l.gmapsLink || ''}`;
     if (seen.has(key)) {
       return false;
     }
