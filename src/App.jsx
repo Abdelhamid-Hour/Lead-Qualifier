@@ -146,10 +146,10 @@ export default function App() {
     }
   }, [settings]);
 
-  // Recalculate lead messages when templates change
-  const prevMessagesRef = useRef(JSON.stringify({ lang: settings.activeLanguage, msgs: settings.messageLanguages }));
+  // Recalculate lead messages when templates or country code change
+  const prevMessagesRef = useRef(JSON.stringify({ lang: settings.activeLanguage, msgs: settings.messageLanguages, code: settings.defaultCountryCode }));
   useEffect(() => {
-    const currentMessages = JSON.stringify({ lang: settings.activeLanguage, msgs: settings.messageLanguages });
+    const currentMessages = JSON.stringify({ lang: settings.activeLanguage, msgs: settings.messageLanguages, code: settings.defaultCountryCode });
     if (currentMessages !== prevMessagesRef.current) {
       prevMessagesRef.current = currentMessages;
       const activeMsgs = settings.messageLanguages?.[settings.activeLanguage] || {};
@@ -169,7 +169,7 @@ export default function App() {
         return changed ? newLeads : prevLeads;
       });
     }
-  }, [settings.messageLanguages, settings.activeLanguage]);
+  }, [settings.messageLanguages, settings.activeLanguage, settings.defaultCountryCode]);
 
   // Load saved lists from directory
   const refreshSavedLists = useCallback(async () => {
