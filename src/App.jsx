@@ -609,6 +609,12 @@ export default function App() {
       if (newLeads.length > 0) {
         const combined = [...leads, ...newLeads];
         setLeads(deduplicateLeads(combined));
+        
+        if (!listName) {
+          const defaultName = file.name ? file.name.replace(/\.[^/.]+$/, "") : 'Imported_Leads';
+          setListName(defaultName);
+          handleStartRename();
+        }
       }
       
     } catch (err) {
