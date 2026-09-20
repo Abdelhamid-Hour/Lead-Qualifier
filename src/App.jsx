@@ -41,14 +41,6 @@ function getInitialSettings() {
         if (!parsed.messageLanguages.ar) parsed.messageLanguages.ar = { ...DEFAULT_TEMPLATES.ar.messages };
         if (!parsed.messageLanguages.ma) parsed.messageLanguages.ma = { ...DEFAULT_TEMPLATES.ma.messages };
       }
-      
-      // Auto-fill ES and DE if they are empty
-      if (!parsed.messageLanguages.es || !parsed.messageLanguages.es.cat1) {
-        parsed.messageLanguages.es = { ...DEFAULT_TEMPLATES.es.messages };
-      }
-      if (!parsed.messageLanguages.de || !parsed.messageLanguages.de.cat1) {
-        parsed.messageLanguages.de = { ...DEFAULT_TEMPLATES.de.messages };
-      }
       return parsed;
     }
   } catch {}
