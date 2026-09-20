@@ -521,18 +521,38 @@ export default function App() {
         const catIdx = headers.findIndex(h => String(h).toLowerCase().includes('category'));
         const waLinkIdx = headers.findIndex(h => String(h).toLowerCase().includes('whatsapp'));
         const msgIdx = headers.findIndex(h => String(h).toLowerCase().includes('msg') || String(h).toLowerCase().includes('message'));
+        const reviewsIdx = headers.findIndex(h => String(h).toLowerCase().includes('review'));
+        const ratingIdx = headers.findIndex(h => String(h).toLowerCase().includes('rate') || String(h).toLowerCase().includes('rating'));
+        const gmapsIdx = headers.findIndex(h => String(h).toLowerCase().includes('map'));
 
         if (nameIdx >= 0) name = row[nameIdx] || '';
         else name = row[0] || ''; // fallback to 1st col
 
         if (phoneIdx >= 0) phone = row[phoneIdx] || '';
-        else phone = row[4] || ''; // fallback to 5th col (our app export)
-
-        if (websiteIdx >= 0) website = row[websiteIdx] === 'Visit' ? '' : (row[websiteIdx] || '');
-        else website = row[6] === 'Visit' ? '' : (row[6] || '');
+        else phone = row[4] || ''; // fallback to 5th col
 
         if (typeIdx >= 0) type = row[typeIdx] || '';
         else type = row[1] || '';
+        
+        reviews = reviewsIdx >= 0 ? row[reviewsIdx] : (row[2] || '');
+        rating = ratingIdx >= 0 ? row[ratingIdx] : (row[5] || '');
+
+        // Helper to extract hyperlink URL from cell object
+        const getUrl = (colIdx) => {
+          if (colIdx < 0) return '';
+          const colLetter = XLSX.utils.encode_col(colIdx);
+          const cell = worksheet[`${colLetter}${i + 1}`];
+          if (cell && cell.l && cell.l.Target) return cell.l.Target;
+          return row[colIdx] || '';
+        };
+
+        if (websiteIdx >= 0) website = getUrl(websiteIdx);
+        else website = getUrl(6); // fallback to 7th col
+        if (website === 'Visit' || website.includes('Visit')) website = '';
+
+        if (gmapsIdx >= 0) gmapsLink = getUrl(gmapsIdx);
+        else gmapsLink = getUrl(7); // fallback to 8th col
+        if (gmapsLink === 'Maps' || gmapsLink.includes('Maps')) gmapsLink = '';
         
         let rawCat = catIdx >= 0 ? row[catIdx] : 'Not Checked';
         category = 'not_checked';
@@ -549,17 +569,14 @@ export default function App() {
 
         message = msgIdx >= 0 ? (row[msgIdx] || '') : '';
         
+        let hasWaCell = waLinkIdx >= 0 ? !!row[waLinkIdx] : !!row[3];
+
         if (category !== 'not_checked' && category !== 'cat5') {
           if (!message) {
             message = personalizeMessage(activeMsgs[category] || '', name);
           }
-          if (waLinkIdx >= 0) {
-            // Only generate link if the column was not intentionally left empty
-            if (row[waLinkIdx]) {
-              waLink = buildWhatsAppLink(phone, message, settings.defaultCountryCode);
-            }
-          } else {
-            // New import without WhatsApp column
+          // Only generate link if the cell wasn't intentionally empty
+          if (hasWaCell) {
             waLink = buildWhatsAppLink(phone, message, settings.defaultCountryCode);
           }
         }
@@ -569,10 +586,10 @@ export default function App() {
           name,
           type,
           phone: phone ? String(phone) : '',
-          rating: row[5] || '',
-          reviews: row[2] || '',
+          rating: rating ? String(rating) : '',
+          reviews: reviews ? String(reviews) : '',
           website,
-          gmapsLink: row[7] || '',
+          gmapsLink,
           category,
           message,
           waLink
