@@ -518,6 +518,9 @@ export default function App() {
         const phoneIdx = headers.findIndex(h => String(h).toLowerCase().includes('phone'));
         const websiteIdx = headers.findIndex(h => String(h).toLowerCase().includes('website'));
         const typeIdx = headers.findIndex(h => String(h).toLowerCase().includes('type'));
+        const catIdx = headers.findIndex(h => String(h).toLowerCase().includes('category'));
+        const waLinkIdx = headers.findIndex(h => String(h).toLowerCase().includes('whatsapp'));
+        const msgIdx = headers.findIndex(h => String(h).toLowerCase().includes('msg') || String(h).toLowerCase().includes('message'));
 
         if (nameIdx >= 0) name = row[nameIdx] || '';
         else name = row[0] || ''; // fallback to 1st col
@@ -530,9 +533,36 @@ export default function App() {
 
         if (typeIdx >= 0) type = row[typeIdx] || '';
         else type = row[1] || '';
+        
+        let rawCat = catIdx >= 0 ? row[catIdx] : 'Not Checked';
+        category = 'not_checked';
+        const labelsMap = {
+          'no website': 'cat1', 'saas redirect': 'cat2', 'broken website': 'cat3',
+          'no reservation system': 'cat4', 'all good': 'cat5', 'needs redesign': 'cat6', 'not checked': 'not_checked'
+        };
+        const searchCat = String(rawCat).trim().toLowerCase();
+        if (labelsMap[searchCat]) {
+          category = labelsMap[searchCat];
+        } else if (searchCat.startsWith('cat')) {
+          category = searchCat;
+        }
 
-        const generatedMessage = personalizeMessage(activeMsgs[category] || '', name);
-        waLink = buildWhatsAppLink(phone, generatedMessage, settings.defaultCountryCode);
+        message = msgIdx >= 0 ? (row[msgIdx] || '') : '';
+        
+        if (category !== 'not_checked' && category !== 'cat5') {
+          if (!message) {
+            message = personalizeMessage(activeMsgs[category] || '', name);
+          }
+          if (waLinkIdx >= 0) {
+            // Only generate link if the column was not intentionally left empty
+            if (row[waLinkIdx]) {
+              waLink = buildWhatsAppLink(phone, message, settings.defaultCountryCode);
+            }
+          } else {
+            // New import without WhatsApp column
+            waLink = buildWhatsAppLink(phone, message, settings.defaultCountryCode);
+          }
+        }
         
         newLeads.push({
           id: crypto.randomUUID(),
@@ -544,7 +574,7 @@ export default function App() {
           website,
           gmapsLink: row[7] || '',
           category,
-          message: generatedMessage,
+          message,
           waLink
         });
       }
