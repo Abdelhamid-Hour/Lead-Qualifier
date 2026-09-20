@@ -56,6 +56,7 @@ export async function restoreFromBackup(file) {
 
     let restoredLists = 0;
     let restoredLeads = 0;
+    const listIdMap = {}; // Map backup list IDs to actual DB list IDs
 
     // Restore lists (upsert to avoid duplicates)
     for (const list of backup.lists) {
@@ -71,23 +72,40 @@ export async function restoreFromBackup(file) {
           name: list.name,
           created_at: list.created_at
         });
-        if (!error) restoredLists++;
+        if (!error) {
+          listIdMap[list.id] = list.id;
+          restoredLists++;
+        }
       } else {
+        listIdMap[list.id] = existing.id; // Map old backup ID to existing DB ID
         restoredLists++;
       }
     }
 
-    // Restore leads (only insert leads that don't exist yet)
+    // Restore leads (bulk upsert to avoid rate limits and improve speed)
+    const validLeads = [];
     for (const lead of backup.leads) {
-      const { data: existing } = await supabase
-        .from('leads')
-        .select('id')
-        .eq('id', lead.id)
-        .single();
+      if (listIdMap[lead.list_id]) {
+        lead.list_id = listIdMap[lead.list_id];
+        validLeads.push(lead);
+      }
+    }
 
-      if (!existing) {
-        const { error } = await supabase.from('leads').insert(lead);
-        if (!error) restoredLeads++;
+    if (validLeads.length > 0) {
+      // Supabase bulk upsert can handle arrays
+      // We process in chunks of 500 to avoid request size limits
+      const chunkSize = 500;
+      for (let i = 0; i < validLeads.length; i += chunkSize) {
+        const chunk = validLeads.slice(i, i + chunkSize);
+        const { data, error } = await supabase
+          .from('leads')
+          .upsert(chunk, { onConflict: 'id' });
+          
+        if (!error) {
+          restoredLeads += chunk.length;
+        } else {
+          console.error('Error restoring leads chunk:', error);
+        }
       }
     }
 
