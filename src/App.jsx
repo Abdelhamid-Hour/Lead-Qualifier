@@ -13,7 +13,7 @@ import { selectSaveFolder, saveListToExcel, loadSavedLists, loadListFromExcel, h
 import { DEFAULT_MESSAGES_FR, DEFAULT_MESSAGES_EN, DEFAULT_TEMPLATES, DEFAULT_SOCIAL_DOMAINS, DEFAULT_SAAS_DOMAINS, personalizeMessage } from './utils/constants.js';
 import { loadCoverage, saveCoverage, addNiche, removeNiche, addCountry, removeCountry, addCity, removeCity, toggleScan, updateCityNote } from './utils/coverageManager.js';
 
-import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X, Clock, Layers } from 'lucide-react';
+import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X, Clock, Layers, Upload } from 'lucide-react';
 import Dialog from './components/Dialog.jsx';
 import { loadDBSettings, saveDBSettings } from './utils/settingsManager.js';
 import { loadAllContactedLeads, markAsContacted } from './utils/contactedManager.js';
@@ -484,6 +484,86 @@ export default function App() {
 
 
 
+  const handleImportExcel = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const XLSX = await import('xlsx');
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const firstSheet = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheet];
+      const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      const newLeads = [];
+      const activeMsgs = settings.messageLanguages?.[settings.activeLanguage] || {};
+      
+      // Assume the file has a header row, so start from i=1
+      for (let i = 1; i < json.length; i++) {
+        const row = json[i];
+        if (!row || row.length === 0 || !row[0]) continue;
+        
+        // Find if this is an export from our app by checking headers
+        let name = '', type = '', reviews = '', phone = '', rating = '', website = '', gmapsLink = '', category = 'not_checked', message = '', waLink = '';
+        
+        // Check header (json[0]) to map columns if possible
+        const headers = json[0] || [];
+        const nameIdx = headers.findIndex(h => String(h).toLowerCase().includes('name'));
+        const phoneIdx = headers.findIndex(h => String(h).toLowerCase().includes('phone'));
+        const websiteIdx = headers.findIndex(h => String(h).toLowerCase().includes('website'));
+        const typeIdx = headers.findIndex(h => String(h).toLowerCase().includes('type'));
+
+        if (nameIdx >= 0) name = row[nameIdx] || '';
+        else name = row[0] || ''; // fallback to 1st col
+
+        if (phoneIdx >= 0) phone = row[phoneIdx] || '';
+        else phone = row[4] || ''; // fallback to 5th col (our app export)
+
+        if (websiteIdx >= 0) website = row[websiteIdx] === 'Visit' ? '' : (row[websiteIdx] || '');
+        else website = row[6] === 'Visit' ? '' : (row[6] || '');
+
+        if (typeIdx >= 0) type = row[typeIdx] || '';
+        else type = row[1] || '';
+
+        const generatedMessage = personalizeMessage(activeMsgs[category] || '', name);
+        waLink = buildWhatsAppLink(phone, generatedMessage);
+        
+        newLeads.push({
+          id: crypto.randomUUID(),
+          name,
+          type,
+          phone: phone ? String(phone) : '',
+          rating: row[5] || '',
+          reviews: row[2] || '',
+          website,
+          gmapsLink: row[7] || '',
+          category,
+          message: generatedMessage,
+          waLink
+        });
+      }
+      
+      if (newLeads.length > 0) {
+        const combined = [...leads, ...newLeads];
+        setLeads(deduplicateLeads(combined));
+      }
+      
+    } catch (err) {
+      console.error('Error importing Excel:', err);
+      setDialogState({
+        isOpen: true,
+        type: 'alert',
+        title: 'Import Error',
+        message: 'Failed to import Excel file. Please ensure it is a valid .xlsx file.',
+        confirmText: 'OK'
+      });
+    }
+    
+    // Reset file input
+    e.target.value = '';
+  };
+
   // Rename
   const handleStartRename = () => {
     setEditName(listName);
@@ -800,6 +880,19 @@ export default function App() {
                       >
                         <Download size={14} /> Download .xlsx
                       </button>
+                      <label 
+                        className="btn btn-secondary"
+                        style={{ padding: '4px 8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '8px', cursor: 'pointer' }}
+                        title="Import Leads from Excel"
+                      >
+                        <Upload size={14} /> Import .xlsx
+                        <input 
+                          type="file" 
+                          accept=".xlsx,.xls" 
+                          style={{ display: 'none' }} 
+                          onChange={handleImportExcel} 
+                        />
+                      </label>
                     </>
                   )}
                 </div>
