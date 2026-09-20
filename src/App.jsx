@@ -42,9 +42,9 @@ function getInitialSettings() {
           if (!parsed.messageLanguages[key]) {
             parsed.messageLanguages[key] = { ...defaultMessageLanguages[key] };
           } else {
-            // Also ensure all categories exist within each language
+            // Also ensure all categories exist within each language and are not empty
             for (const cat of ['cat1', 'cat2', 'cat3', 'cat4', 'cat6']) {
-              if (parsed.messageLanguages[key][cat] === undefined) {
+              if (!parsed.messageLanguages[key][cat] || parsed.messageLanguages[key][cat] === '') {
                 parsed.messageLanguages[key][cat] = defaultMessageLanguages[key][cat];
               }
             }
@@ -108,10 +108,15 @@ export default function App() {
         const mergedLanguages = { ...prev.messageLanguages };
         if (dbSettings.messageLanguages) {
           for (const lang of Object.keys(dbSettings.messageLanguages)) {
-            mergedLanguages[lang] = {
-              ...(mergedLanguages[lang] || {}),
-              ...dbSettings.messageLanguages[lang]
-            };
+            mergedLanguages[lang] = { ...(mergedLanguages[lang] || {}) };
+            const dbLang = dbSettings.messageLanguages[lang];
+            if (dbLang) {
+              for (const cat of ['cat1', 'cat2', 'cat3', 'cat4', 'cat6']) {
+                if (dbLang[cat] !== undefined && dbLang[cat] !== '') {
+                  mergedLanguages[lang][cat] = dbLang[cat];
+                }
+              }
+            }
           }
         }
         
@@ -719,10 +724,15 @@ export default function App() {
                     confirmText: 'Reset',
                     cancelText: 'Cancel',
                     onConfirm: () => {
+                      const defaultMessageLanguages = {};
+                      for (const [key, tpl] of Object.entries(DEFAULT_TEMPLATES)) {
+                        defaultMessageLanguages[key] = { ...tpl.messages };
+                      }
                       setSettings({
                         socialDomains: [...DEFAULT_SOCIAL_DOMAINS],
                         saasDomains: [...DEFAULT_SAAS_DOMAINS],
-                        messages: { ...DEFAULT_MESSAGES },
+                        activeLanguage: 'fr',
+                        messageLanguages: defaultMessageLanguages,
                         saveDirectory: settings.saveDirectory
                       });
                     },
