@@ -546,13 +546,23 @@ export default function App() {
           return row[colIdx] || '';
         };
 
+        const ensureAbsoluteUrl = (url) => {
+          if (!url) return '';
+          let clean = String(url).trim();
+          if (clean === 'Visit' || clean.includes('Visit') || clean === 'Maps' || clean.includes('Maps') || clean === 'Message') return '';
+          if (!/^https?:\/\//i.test(clean)) {
+            return `https://${clean}`;
+          }
+          return clean;
+        };
+
         if (websiteIdx >= 0) website = getUrl(websiteIdx);
         else website = getUrl(6); // fallback to 7th col
-        if (website === 'Visit' || website.includes('Visit')) website = '';
+        website = ensureAbsoluteUrl(website);
 
         if (gmapsIdx >= 0) gmapsLink = getUrl(gmapsIdx);
         else gmapsLink = getUrl(7); // fallback to 8th col
-        if (gmapsLink === 'Maps' || gmapsLink.includes('Maps')) gmapsLink = '';
+        gmapsLink = ensureAbsoluteUrl(gmapsLink);
         
         let rawCat = catIdx >= 0 ? row[catIdx] : 'Not Checked';
         category = 'not_checked';
