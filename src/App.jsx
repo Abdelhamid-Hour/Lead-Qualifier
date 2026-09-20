@@ -23,23 +23,33 @@ const LAST_LIST_KEY = 'lq_last_list';
 
 // We'll still load initial default from memory while DB loads
 function getInitialSettings() {
+  const defaultMessageLanguages = {};
+  for (const [key, tpl] of Object.entries(DEFAULT_TEMPLATES)) {
+    defaultMessageLanguages[key] = { ...tpl.messages };
+  }
+
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (!parsed.messageLanguages) {
-        parsed.messageLanguages = {
-          ar: { ...DEFAULT_TEMPLATES.ar.messages },
-          ma: { ...DEFAULT_TEMPLATES.ma.messages },
-          fr: parsed.messages || { ...DEFAULT_MESSAGES_FR },
-          en: { ...DEFAULT_MESSAGES_EN },
-          es: { ...DEFAULT_TEMPLATES.es.messages },
-          de: { ...DEFAULT_TEMPLATES.de.messages }
-        };
+        parsed.messageLanguages = { ...defaultMessageLanguages };
+        parsed.messageLanguages.fr = parsed.messages || { ...DEFAULT_MESSAGES_FR };
         parsed.activeLanguage = 'fr';
-      } else if (!parsed.messageLanguages.ma) {
-        if (!parsed.messageLanguages.ar) parsed.messageLanguages.ar = { ...DEFAULT_TEMPLATES.ar.messages };
-        if (!parsed.messageLanguages.ma) parsed.messageLanguages.ma = { ...DEFAULT_TEMPLATES.ma.messages };
+      } else {
+        // Ensure all new languages exist in the loaded settings
+        for (const key of Object.keys(defaultMessageLanguages)) {
+          if (!parsed.messageLanguages[key]) {
+            parsed.messageLanguages[key] = { ...defaultMessageLanguages[key] };
+          } else {
+            // Also ensure all categories exist within each language
+            for (const cat of ['cat1', 'cat2', 'cat3', 'cat4', 'cat6']) {
+              if (parsed.messageLanguages[key][cat] === undefined) {
+                parsed.messageLanguages[key][cat] = defaultMessageLanguages[key][cat];
+              }
+            }
+          }
+        }
       }
       return parsed;
     }
@@ -48,14 +58,7 @@ function getInitialSettings() {
     socialDomains: [...DEFAULT_SOCIAL_DOMAINS],
     saasDomains: [...DEFAULT_SAAS_DOMAINS],
     activeLanguage: 'fr',
-    messageLanguages: {
-      ar: { ...DEFAULT_TEMPLATES.ar.messages },
-      ma: { ...DEFAULT_TEMPLATES.ma.messages },
-      fr: { ...DEFAULT_MESSAGES_FR },
-      en: { ...DEFAULT_MESSAGES_EN },
-      es: { ...DEFAULT_TEMPLATES.es.messages },
-      de: { ...DEFAULT_TEMPLATES.de.messages }
-    },
+    messageLanguages: defaultMessageLanguages,
     saveDirectory: ''
   };
 }
@@ -101,8 +104,26 @@ export default function App() {
   const settingsLoadedRef = useRef(false);
   useEffect(() => {
     loadDBSettings().then(dbSettings => {
-      setSettings(prev => ({ ...prev, ...dbSettings }));
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...getInitialSettings(), ...dbSettings }));
+      setSettings(prev => {
+        const mergedLanguages = { ...prev.messageLanguages };
+        if (dbSettings.messageLanguages) {
+          for (const lang of Object.keys(dbSettings.messageLanguages)) {
+            mergedLanguages[lang] = {
+              ...(mergedLanguages[lang] || {}),
+              ...dbSettings.messageLanguages[lang]
+            };
+          }
+        }
+        
+        const mergedSettings = { 
+          ...prev, 
+          ...dbSettings, 
+          messageLanguages: mergedLanguages 
+        };
+        
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(mergedSettings));
+        return mergedSettings;
+      });
       settingsLoadedRef.current = true;
     });
   }, []);
