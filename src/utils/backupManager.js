@@ -6,21 +6,39 @@ import { supabase } from './supabaseClient.js';
  */
 export async function downloadFullBackup() {
   try {
-    const [listsRes, leadsRes, coverageRes, settingsRes] = await Promise.all([
-      supabase.from('lists').select('*'),
-      supabase.from('leads').select('*'),
+    // Supabase has a default limit of 1000 rows per request.
+    // We need to paginate to get ALL leads if there are more than 1000.
+    let allLeads = [];
+    let page = 0;
+    const pageSize = 1000;
+    
+    while (true) {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      
+      allLeads = allLeads.concat(data);
+      if (data.length < pageSize) break; // Reached the end
+      page++;
+    }
+
+    const [listsRes, coverageRes, settingsRes] = await Promise.all([
+      supabase.from('lists').select('*').limit(10000), // Assuming < 10000 lists
       supabase.from('coverage').select('*'),
       supabase.from('settings').select('*')
     ]);
 
     if (listsRes.error) throw listsRes.error;
-    if (leadsRes.error) throw leadsRes.error;
 
     const backup = {
       version: 1,
       created_at: new Date().toISOString(),
       lists: listsRes.data || [],
-      leads: leadsRes.data || [],
+      leads: allLeads,
       coverage: coverageRes.data || [],
       settings: settingsRes.data || []
     };
@@ -34,7 +52,7 @@ export async function downloadFullBackup() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    return { success: true, lists: listsRes.data?.length || 0, leads: leadsRes.data?.length || 0 };
+    return { success: true, lists: listsRes.data?.length || 0, leads: allLeads.length };
   } catch (err) {
     console.error('Backup error:', err);
     return { success: false, error: err.message };
