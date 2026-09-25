@@ -4,54 +4,39 @@ export function parseGoogleMapsHTML(htmlString) {
   
   const leads = [];
   
-  // Try to use Table Scraper rows first for perfect 1:1 Excel alignment
-  const tableScraperRows = Array.from(doc.querySelectorAll('.tablescraper-selected-row'));
+  // Extract all place links
+  const allLinks = Array.from(doc.querySelectorAll('a'));
+  const placeLinks = allLinks.filter(a => {
+    const href = a.getAttribute('href') || '';
+    return href.includes('/maps/place/');
+  });
   
-  if (tableScraperRows.length > 0) {
-    tableScraperRows.forEach((row, index) => {
-      const link = row.querySelector('a[href*="/maps/place/"]');
-      
-      if (!link) {
-        // This is a header or empty row from Table Scraper. User wants to remove it.
-        return;
+  const uniquePlaceLinks = [];
+  const seenHrefs = new Set();
+  for (const link of placeLinks) {
+    const href = link.getAttribute('href');
+    if (!seenHrefs.has(href)) {
+      seenHrefs.add(href);
+      uniquePlaceLinks.push(link);
+    }
+  }
+  
+  uniquePlaceLinks.forEach((link, index) => {
+    let card = link;
+    while (card.parentElement) {
+      const parentPlaceLinks = Array.from(card.parentElement.querySelectorAll('a')).filter(a => {
+        const h = a.getAttribute('href') || '';
+        return h.includes('/maps/place/');
+      });
+      // Stop ascending when the parent contains links to OTHER places
+      if (parentPlaceLinks.some(a => a.getAttribute('href') !== link.getAttribute('href'))) {
+        break;
       }
-      
-      parseCard(link, row, leads, index);
-    });
-  } else {
-    // Fallback: If they didn't use Table Scraper, just extract all place links
-    const allLinks = Array.from(doc.querySelectorAll('a'));
-    const placeLinks = allLinks.filter(a => {
-      const href = a.getAttribute('href') || '';
-      return href.includes('/maps/place/');
-    });
-    
-    const uniquePlaceLinks = [];
-    const seenHrefs = new Set();
-    for (const link of placeLinks) {
-      const href = link.getAttribute('href');
-      if (!seenHrefs.has(href)) {
-        seenHrefs.add(href);
-        uniquePlaceLinks.push(link);
-      }
+      card = card.parentElement;
     }
     
-    uniquePlaceLinks.forEach((link, index) => {
-      let card = link;
-      while (card.parentElement) {
-        const parentPlaceLinks = Array.from(card.parentElement.querySelectorAll('a')).filter(a => {
-          const h = a.getAttribute('href') || '';
-          return h.includes('/maps/place/');
-        });
-        if (parentPlaceLinks.some(a => a.getAttribute('href') !== link.getAttribute('href'))) {
-          break;
-        }
-        card = card.parentElement;
-      }
-      
-      parseCard(link, card, leads, index);
-    });
-  }
+    parseCard(link, card, leads, index);
+  });
   
   function parseCard(link, card, leadsArray, index) {
     const name = link.getAttribute('aria-label') || link.textContent.trim();

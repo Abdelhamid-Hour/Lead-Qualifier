@@ -3,12 +3,23 @@ import { CATEGORY_LABELS, CATEGORY_COLORS, personalizeMessage } from '../utils/c
 import { buildWhatsAppLink } from '../utils/phoneUtils.js';
 import { ExternalLink, MessageCircle, MapPin, Star, Trash2, CheckCircle2 } from 'lucide-react';
 
-export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, defaultCountryCode, searchQuery, showWithWaOnly, contactedSet, onMarkContacted }) {
+export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, defaultCountryCode, searchQuery, showWithWaOnly, showNotContactedOnly, contactedSet, onMarkContacted }) {
+  const isLeadContacted = (lead) => {
+    if (!lead.phone || !lead.name || !contactedSet) return false;
+    const cleanPhone = lead.phone.replace(/[^0-9+]/g, '');
+    const cleanName = lead.name.trim().toLowerCase();
+    return contactedSet.has(cleanPhone + '|' + cleanName);
+  };
+
   const filteredLeads = useMemo(() => {
     let result = leads;
     
     if (showWithWaOnly) {
       result = result.filter(l => l.waLink);
+    }
+    
+    if (showNotContactedOnly) {
+      result = result.filter(l => !isLeadContacted(l));
     }
     
     if (!searchQuery) return result;
@@ -18,7 +29,7 @@ export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages
       (l.phone || '').toLowerCase().includes(q) ||
       (l.website || '').toLowerCase().includes(q)
     );
-  }, [leads, searchQuery, showWithWaOnly]);
+  }, [leads, searchQuery, showWithWaOnly, showNotContactedOnly, contactedSet]);
 
   const handleCategoryChange = (lead, newCategory) => {
     let message = '';
@@ -37,13 +48,6 @@ export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages
       message,
       waLink
     });
-  };
-
-  const isLeadContacted = (lead) => {
-    if (!lead.phone || !lead.name || !contactedSet) return false;
-    const cleanPhone = lead.phone.replace(/[^0-9+]/g, '');
-    const cleanName = lead.name.trim().toLowerCase();
-    return contactedSet.has(cleanPhone + '|' + cleanName);
   };
 
   if (!leads.length) {

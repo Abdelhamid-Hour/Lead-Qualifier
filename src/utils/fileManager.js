@@ -10,15 +10,14 @@ export function sanitizeFileName(name) {
   return name.replace(/[^a-zA-Z0-9_\-\s\u00C0-\u024F]/g, '').replace(/\s+/g, '_').substring(0, 100) || 'leads';
 }
 
-const saveLocks = {};
+const saveVersions = {};
 
 export async function saveListToExcel(listName, leads, saveDirectory) {
   const cleanName = sanitizeFileName(listName);
   
-  while (saveLocks[cleanName]) {
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  saveLocks[cleanName] = true;
+  // "Latest wins" mechanism: Increment version for this list
+  const version = (saveVersions[cleanName] || 0) + 1;
+  saveVersions[cleanName] = version;
   
   try {
     let { data: listData, error: listError } = await supabase
@@ -28,6 +27,7 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
       .limit(1);
 
     if (listError) throw listError;
+    if (saveVersions[cleanName] !== version) return { path: cleanName, superseded: true };
 
     if (!listData || listData.length === 0) {
       const { data: newList, error: insertError } = await supabase
@@ -42,6 +42,7 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
     }
 
     const listId = listData.id;
+    if (saveVersions[cleanName] !== version) return { path: cleanName, superseded: true };
 
     // SAFETY CHECK: If we are about to save 0 leads, check if DB already has leads.
     // If it does, REFUSE to wipe them — this is almost certainly a bug/race condition.
@@ -63,6 +64,8 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
       .eq('list_id', listId);
     
     if (fetchErr) throw fetchErr;
+    if (saveVersions[cleanName] !== version) return { path: cleanName, superseded: true };
+    
     const existingDbIds = existingIdsData.map(row => row.id);
 
     // 2. Format leads for upsert
@@ -92,6 +95,7 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
       // 3. Upsert leads in chunks
       const CHUNK_SIZE = 500;
       for (let i = 0; i < leadsToUpsert.length; i += CHUNK_SIZE) {
+        if (saveVersions[cleanName] !== version) return { path: cleanName, superseded: true };
         const chunk = leadsToUpsert.slice(i, i + CHUNK_SIZE);
         const { error: upsertErr } = await supabase.from('leads').upsert(chunk);
         if (upsertErr) throw upsertErr;
@@ -105,6 +109,7 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
     if (idsToDelete.length > 0) {
       const CHUNK_SIZE = 500;
       for (let i = 0; i < idsToDelete.length; i += CHUNK_SIZE) {
+        if (saveVersions[cleanName] !== version) return { path: cleanName, superseded: true };
         const deleteChunk = idsToDelete.slice(i, i + CHUNK_SIZE);
         const { error: deleteErr } = await supabase
           .from('leads')
@@ -117,8 +122,6 @@ export async function saveListToExcel(listName, leads, saveDirectory) {
   } catch (err) {
     console.error('Save error:', err);
     return null;
-  } finally {
-    saveLocks[cleanName] = false;
   }
 }
 
@@ -148,16 +151,35 @@ export async function loadListFromExcel(listItem, saveDirectory) {
     if (listError) throw listError;
     if (!listData || listData.length === 0) return null;
 
-    const { data: leads, error: leadsError } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('list_id', listData[0].id)
-      .order('created_at', { ascending: true });
+    let allLeads = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
 
-    if (leadsError) throw leadsError;
+    while (hasMore) {
+      const { data: leadsPage, error: leadsError } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('list_id', listData[0].id)
+        .order('created_at', { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
 
-    return leads.map((row, index) => ({
-      id: crypto.randomUUID(),
+      if (leadsError) throw leadsError;
+
+      if (leadsPage && leadsPage.length > 0) {
+        allLeads = allLeads.concat(leadsPage);
+        if (leadsPage.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allLeads.map((row) => ({
+      id: row.id, // CRITICAL FIX: Keep original DB ID instead of crypto.randomUUID()
       name: row.name,
       type: row.type,
       phone: row.phone,

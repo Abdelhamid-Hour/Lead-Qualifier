@@ -70,9 +70,15 @@ function getInitialSettings() {
 
 const deduplicateLeads = (leadsList) => {
   const seen = new Set();
+  const seenIds = new Set();
   return leadsList.filter(l => {
-    // Use gmapsLink to differentiate branches of the same company that don't have phone numbers
-    const key = `${l.name || ''}|${l.phone || ''}|${l.gmapsLink || ''}`;
+    if (l.id) {
+      if (seenIds.has(l.id)) return false;
+      seenIds.add(l.id);
+    }
+    
+    // Include website to prevent dropping branches without phone/gmapsLink
+    const key = `${l.name || ''}|${l.phone || ''}|${l.gmapsLink || ''}|${l.website || ''}`;
     if (seen.has(key)) {
       return false;
     }
@@ -89,6 +95,7 @@ export default function App() {
   const [editName, setEditName] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showWithWaOnly, setShowWithWaOnly] = useState(false);
+  const [showNotContactedOnly, setShowNotContactedOnly] = useState(false);
   const [savedLists, setSavedLists] = useState([]);
   const [filePath, setFilePath] = useState(null);
   const [isChecking, setIsChecking] = useState(false);
@@ -105,6 +112,7 @@ export default function App() {
   const [isDeduplicating, setIsDeduplicating] = useState(false);
   const [contactedSet, setContactedSet] = useState(new Set());
   const initialLoadDoneRef = useRef(false);
+  const isTransitioningRef = useRef(false);
 
   // Load DB settings on mount
   const settingsLoadedRef = useRef(false);
@@ -185,8 +193,12 @@ export default function App() {
     if (!initialLoadDoneRef.current) return;
     if (!listName) return;
     
-    // Prevent creating ghost files: don't save if there are no leads AND the file doesn't exist yet
-    if (leads.length === 0 && !filePath) {
+    // Guard against race conditions during list switching
+    if (isTransitioningRef.current) return;
+    
+    // HARD BLOCK: Never auto-save 0 leads.
+    // If the list truly becomes empty, it should be deleted manually.
+    if (leads.length === 0) {
       return;
     }
     
@@ -195,16 +207,22 @@ export default function App() {
     saveTimeoutRef.current = setTimeout(async () => {
       setIsSaving(true);
       const result = await saveListToExcel(listName, leads, settings.saveDirectory);
-      if (result && result.path) {
-        setFilePath(result.path);
-        localStorage.setItem(LAST_LIST_KEY, listName);
-        refreshSavedLists();
+      if (result) {
+        if (result.superseded) {
+          // This save was canceled because a newer one started. Do nothing.
+          return;
+        }
+        if (result.path) {
+          setFilePath(result.path);
+          localStorage.setItem(LAST_LIST_KEY, listName);
+          refreshSavedLists();
+        }
       } else {
         setDialogState({
           isOpen: true,
           type: 'alert',
           title: 'Database Save Failed',
-          message: 'The app failed to save your leads to the cloud. Your list may be cleared or corrupted in the database due to network issues.\n\nPlease DO NOT close this tab! Download a manual backup of your leads, then try clicking "Refresh" or editing a lead to trigger a re-save.',
+          message: 'The app failed to save your leads to the cloud. Your list may be corrupted in the database due to network issues.\n\nPlease DO NOT close this tab! Download a manual backup of your leads, then try clicking "Refresh" or editing a lead to trigger a re-save.',
           confirmText: 'Understood'
         });
       }
@@ -212,7 +230,7 @@ export default function App() {
     }, 1500);
     
     return () => clearTimeout(saveTimeoutRef.current);
-  }, [leads, listName, settings.saveDirectory, refreshSavedLists, filePath]);
+  }, [leads, listName, settings.saveDirectory, refreshSavedLists]);
 
   // Warn on tab close if saving
   useEffect(() => {
@@ -431,7 +449,7 @@ export default function App() {
       setIsSaving(true);
       const saveResult = await saveListToExcel(listName, leads, settings.saveDirectory);
       setIsSaving(false);
-      if (!saveResult) {
+      if (!saveResult || !saveResult.path) {
         setDialogState({
           isOpen: true,
           type: 'alert',
@@ -446,9 +464,11 @@ export default function App() {
     setIsLoadingLeads(true);
     const loadedLeads = await loadListFromExcel(listItem, settings.saveDirectory);
     if (loadedLeads !== null) {
+      isTransitioningRef.current = true;
       setLeads(loadedLeads);
       setListName(listItem.name);
       setActiveView('leads');
+      setTimeout(() => { isTransitioningRef.current = false; }, 100);
     } else {
       setDialogState({
         isOpen: true,
@@ -468,7 +488,7 @@ export default function App() {
       setIsSaving(true);
       const saveResult = await saveListToExcel(listName, leads, settings.saveDirectory);
       setIsSaving(false);
-      if (!saveResult) {
+      if (!saveResult || !saveResult.path) {
         setDialogState({
           isOpen: true,
           type: 'alert',
@@ -480,6 +500,7 @@ export default function App() {
       }
     }
     
+    isTransitioningRef.current = true;
     setLeads([]);
     const now = new Date();
     const defaultName = `Leads_${now.toISOString().slice(0, 10)}_${now.getHours()}h${String(now.getMinutes()).padStart(2, '0')}`;
@@ -488,6 +509,7 @@ export default function App() {
     setSearchQuery('');
     setActiveView('leads');
     setIsSidebarOpen(false);
+    setTimeout(() => { isTransitioningRef.current = false; }, 100);
   };
 
   const handleDeleteList = (list) => {
@@ -729,11 +751,32 @@ export default function App() {
       const loaded = await loadListFromExcel({ name: listName }, settings.saveDirectory);
       if (loaded) {
         allLeads = [...allLeads, ...loaded];
+      } else {
+        // ABORT if any load fails so we don't accidentally delete data
+        setDialogState({
+          isOpen: true,
+          type: 'alert',
+          title: 'Merge Failed',
+          message: `Failed to load list "${listName}". Merge aborted to prevent data loss.`,
+          confirmText: 'OK'
+        });
+        return;
       }
     }
 
     const deduped = deduplicateLeads(allLeads);
-    await saveListToExcel(linkedList, deduped, settings.saveDirectory);
+    const saveResult = await saveListToExcel(linkedList, deduped, settings.saveDirectory);
+    
+    if (!saveResult || !saveResult.path) {
+      setDialogState({
+        isOpen: true,
+        type: 'alert',
+        title: 'Merge Save Failed',
+        message: 'Failed to save the merged list. Original lists were not deleted.',
+        confirmText: 'OK'
+      });
+      return;
+    }
 
     // Remove the old versions from the DB so no data is duplicated
     for (const name of listsToMerge) {
@@ -741,6 +784,7 @@ export default function App() {
     }
     
     // Switch the active view to the newly merged list to prevent auto-save from resurrecting deleted lists
+    isTransitioningRef.current = true;
     setListName(linkedList);
     setLeads(deduped);
     
@@ -748,6 +792,7 @@ export default function App() {
     
     // Close the dialog automatically
     setDialogState({ isOpen: false });
+    setTimeout(() => { isTransitioningRef.current = false; }, 100);
   };
 
   const handleRemoveCity = async (countryName, cityName, deleteFiles = false) => {
@@ -778,7 +823,7 @@ export default function App() {
       setIsSaving(true);
       const saveResult = await saveListToExcel(listName, leads, settings.saveDirectory);
       setIsSaving(false);
-      if (!saveResult) {
+      if (!saveResult || !saveResult.path) {
         setDialogState({
           isOpen: true,
           type: 'alert',
@@ -792,6 +837,7 @@ export default function App() {
     
     setIsLoadingLeads(true);
     const loadedLeads = await loadListFromExcel({ name: linkedListName }, settings.saveDirectory);
+    isTransitioningRef.current = true;
     if (loadedLeads !== null) {
       // List exists in DB — load it
       setLeads(loadedLeads);
@@ -806,6 +852,7 @@ export default function App() {
       setFilePath('');
       setActiveView('leads');
     }
+    setTimeout(() => { isTransitioningRef.current = false; }, 100);
     setIsLoadingLeads(false);
     setIsSidebarOpen(false);
   };
@@ -999,6 +1046,15 @@ export default function App() {
                       onChange={(e) => setShowWithWaOnly(e.target.checked)} 
                     />
                     <label htmlFor="filterWa" style={{ fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>Has WA Link</label>
+
+                    <input 
+                      type="checkbox" 
+                      id="filterNotContacted" 
+                      checked={showNotContactedOnly} 
+                      onChange={(e) => setShowNotContactedOnly(e.target.checked)} 
+                      style={{ marginLeft: '12px' }}
+                    />
+                    <label htmlFor="filterNotContacted" style={{ fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>Not Contacted</label>
                   </div>
                   <div className="search-input-wrapper">
                     <Search size={14} />
@@ -1029,6 +1085,7 @@ export default function App() {
                     defaultCountryCode={settings.defaultCountryCode}
                     searchQuery={searchQuery}
                     showWithWaOnly={showWithWaOnly}
+                    showNotContactedOnly={showNotContactedOnly}
                     contactedSet={contactedSet}
                     onMarkContacted={async (lead) => {
                       if (!lead.phone || !lead.name) return;
