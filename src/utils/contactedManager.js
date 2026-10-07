@@ -78,16 +78,32 @@ export async function getContactedLeads(leads) {
  */
 export async function loadAllContactedLeads() {
   try {
-    const { data, error } = await supabase
-      .from('contacted_leads')
-      .select('phone, name');
-      
-    if (error) throw error;
-    
     const contactedSet = new Set();
-    (data || []).forEach(row => {
-      contactedSet.add(row.phone + '|' + row.name);
-    });
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('contacted_leads')
+        .select('phone, name')
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        data.forEach(row => {
+          contactedSet.add(row.phone + '|' + row.name);
+        });
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          page++;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
     return contactedSet;
   } catch (err) {
     console.error('Load all contacted error:', err);

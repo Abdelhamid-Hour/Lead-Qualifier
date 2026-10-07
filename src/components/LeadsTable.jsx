@@ -105,7 +105,6 @@ export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages
                     title="Open WhatsApp" 
                     onClick={() => onMarkContacted(lead)} 
                     onAuxClick={(e) => { if (e.button === 1) onMarkContacted(lead); }}
-                    onPointerDown={() => onMarkContacted(lead)}
                   >
                     <MessageCircle size={18} fill="currentColor" strokeWidth={1.5} />
                   </a>
