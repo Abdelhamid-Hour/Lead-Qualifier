@@ -1,24 +1,15 @@
 import { supabase } from './supabaseClient.js';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabaseKeepAlive = createClient(supabaseUrl, supabaseKey, {
-  global: {
-    fetch: (url, options) => fetch(url, { ...options, keepalive: true })
-  }
-});
 
 /**
  * Mark a phone+name combination as contacted globally.
  */
 export async function markAsContacted(phone, name, listName) {
-  if (!name) return false;
-  const cleanPhone = (phone || '').replace(/[^0-9+]/g, '');
+  if (!phone || !name) return false;
+  const cleanPhone = phone.replace(/[^0-9+]/g, '');
   const cleanName = name.trim().toLowerCase();
   
   try {
-    const { error } = await supabaseKeepAlive
+    const { error } = await supabase
       .from('contacted_leads')
       .upsert({
         phone: cleanPhone,
@@ -78,32 +69,16 @@ export async function getContactedLeads(leads) {
  */
 export async function loadAllContactedLeads() {
   try {
-    const contactedSet = new Set();
-    let page = 0;
-    const pageSize = 1000;
-    let hasMore = true;
-
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('contacted_leads')
-        .select('phone, name')
-        .range(page * pageSize, (page + 1) * pageSize - 1);
-        
-      if (error) throw error;
+    const { data, error } = await supabase
+      .from('contacted_leads')
+      .select('phone, name');
       
-      if (data && data.length > 0) {
-        data.forEach(row => {
-          contactedSet.add(row.phone + '|' + row.name);
-        });
-        if (data.length < pageSize) {
-          hasMore = false;
-        } else {
-          page++;
-        }
-      } else {
-        hasMore = false;
-      }
-    }
+    if (error) throw error;
+    
+    const contactedSet = new Set();
+    (data || []).forEach(row => {
+      contactedSet.add(row.phone + '|' + row.name);
+    });
     return contactedSet;
   } catch (err) {
     console.error('Load all contacted error:', err);
@@ -112,12 +87,12 @@ export async function loadAllContactedLeads() {
 }
 
 export async function unmarkAsContacted(phone, name) {
-  if (!name) return false;
-  const cleanPhone = (phone || '').replace(/[^0-9+]/g, '');
+  if (!phone || !name) return false;
+  const cleanPhone = phone.replace(/[^0-9+]/g, '');
   const cleanName = name.trim().toLowerCase();
   
   try {
-    const { error } = await supabaseKeepAlive
+    const { error } = await supabase
       .from('contacted_leads')
       .delete()
       .match({ phone: cleanPhone, name: cleanName });
