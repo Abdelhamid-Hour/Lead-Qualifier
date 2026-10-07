@@ -4,8 +4,8 @@ import { supabase } from './supabaseClient.js';
  * Mark a phone+name combination as contacted globally.
  */
 export async function markAsContacted(phone, name, listName) {
-  if (!phone || !name) return false;
-  const cleanPhone = phone.replace(/[^0-9+]/g, '');
+  if (!name) return false;
+  const cleanPhone = (phone || '').replace(/[^0-9+]/g, '');
   const cleanName = name.trim().toLowerCase();
   
   try {
@@ -85,3 +85,26 @@ export async function loadAllContactedLeads() {
     return new Set();
   }
 }
+
+export async function unmarkAsContacted(phone, name) {
+  if (!name) return false;
+  const cleanPhone = (phone || '').replace(/[^0-9+]/g, '');
+  const cleanName = name.trim().toLowerCase();
+  
+  try {
+    const { error } = await supabase
+      .from('contacted_leads')
+      .delete()
+      .match({ phone: cleanPhone, name: cleanName });
+      
+    if (error) {
+       console.error('Supabase delete error:', error);
+       throw error;
+    }
+    return true;
+  } catch (err) {
+    console.error('Unmark contacted error:', err);
+    return false;
+  }
+}
+

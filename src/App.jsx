@@ -16,7 +16,7 @@ import { loadCoverage, saveCoverage, addNiche, removeNiche, addCountry, removeCo
 import { Target, Search, Edit2, AlertCircle, CheckCircle2, Loader2, Save, Map, List, Download, Menu, X, Clock, Layers, Upload } from 'lucide-react';
 import Dialog from './components/Dialog.jsx';
 import { loadDBSettings, saveDBSettings } from './utils/settingsManager.js';
-import { loadAllContactedLeads, markAsContacted } from './utils/contactedManager.js';
+import { loadAllContactedLeads, markAsContacted, unmarkAsContacted } from './utils/contactedManager.js';
 
 const SETTINGS_KEY = 'lq_settings';
 const LAST_LIST_KEY = 'lq_last_list';
@@ -1088,13 +1088,27 @@ export default function App() {
                     showNotContactedOnly={showNotContactedOnly}
                     contactedSet={contactedSet}
                     onMarkContacted={async (lead) => {
-                      if (!lead.phone || !lead.name) return;
-                      const cleanPhone = lead.phone.replace(/[^0-9+]/g, '');
+                      if (!lead.name) return;
+                      const cleanPhone = (lead.phone || '').replace(/[^0-9+]/g, '');
                       const cleanName = lead.name.trim().toLowerCase();
                       const key = cleanPhone + '|' + cleanName;
                       if (!contactedSet.has(key)) {
                         setContactedSet(prev => new Set(prev).add(key));
                         await markAsContacted(lead.phone, lead.name, listName);
+                      }
+                    }}
+                    onUnmarkContacted={async (lead) => {
+                      if (!lead.name) return;
+                      const cleanPhone = (lead.phone || '').replace(/[^0-9+]/g, '');
+                      const cleanName = lead.name.trim().toLowerCase();
+                      const key = cleanPhone + '|' + cleanName;
+                      if (contactedSet.has(key)) {
+                        setContactedSet(prev => {
+                          const next = new Set(prev);
+                          next.delete(key);
+                          return next;
+                        });
+                        await unmarkAsContacted(lead.phone, lead.name);
                       }
                     }}
                   />

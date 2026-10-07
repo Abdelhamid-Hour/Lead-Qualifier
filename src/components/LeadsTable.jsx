@@ -3,10 +3,10 @@ import { CATEGORY_LABELS, CATEGORY_COLORS, personalizeMessage } from '../utils/c
 import { buildWhatsAppLink } from '../utils/phoneUtils.js';
 import { ExternalLink, MessageCircle, MapPin, Star, Trash2, CheckCircle2 } from 'lucide-react';
 
-export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, defaultCountryCode, searchQuery, showWithWaOnly, showNotContactedOnly, contactedSet, onMarkContacted }) {
+export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages, defaultCountryCode, searchQuery, showWithWaOnly, showNotContactedOnly, contactedSet, onMarkContacted, onUnmarkContacted }) {
   const isLeadContacted = (lead) => {
-    if (!lead.phone || !lead.name || !contactedSet) return false;
-    const cleanPhone = lead.phone.replace(/[^0-9+]/g, '');
+    if (!lead.name || !contactedSet) return false;
+    const cleanPhone = (lead.phone || '').replace(/[^0-9+]/g, '');
     const cleanName = lead.name.trim().toLowerCase();
     return contactedSet.has(cleanPhone + '|' + cleanName);
   };
@@ -97,7 +97,16 @@ export default function LeadsTable({ leads, onUpdateLead, onDeleteLead, messages
               <td className="td-reviews">{lead.reviews}</td>
               <td className="td-wa">
                 {lead.waLink ? (
-                  <a href={lead.waLink} target="_blank" rel="noopener noreferrer" className="wa-link" title="Open WhatsApp" onClick={() => onMarkContacted(lead)}>
+                  <a 
+                    href={lead.waLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="wa-link" 
+                    title="Open WhatsApp" 
+                    onClick={() => onMarkContacted(lead)} 
+                    onAuxClick={(e) => { if (e.button === 1) onMarkContacted(lead); }}
+                    onPointerDown={() => onMarkContacted(lead)}
+                  >
                     <MessageCircle size={18} fill="currentColor" strokeWidth={1.5} />
                   </a>
                 ) : (
