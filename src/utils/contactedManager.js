@@ -1,4 +1,13 @@
 import { supabase } from './supabaseClient.js';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseKeepAlive = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    fetch: (url, options) => fetch(url, { ...options, keepalive: true })
+  }
+});
 
 /**
  * Mark a phone+name combination as contacted globally.
@@ -9,7 +18,7 @@ export async function markAsContacted(phone, name, listName) {
   const cleanName = name.trim().toLowerCase();
   
   try {
-    const { error } = await supabase
+    const { error } = await supabaseKeepAlive
       .from('contacted_leads')
       .upsert({
         phone: cleanPhone,
@@ -92,7 +101,7 @@ export async function unmarkAsContacted(phone, name) {
   const cleanName = name.trim().toLowerCase();
   
   try {
-    const { error } = await supabase
+    const { error } = await supabaseKeepAlive
       .from('contacted_leads')
       .delete()
       .match({ phone: cleanPhone, name: cleanName });
