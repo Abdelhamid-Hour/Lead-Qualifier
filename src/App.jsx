@@ -55,6 +55,9 @@ function getInitialSettings() {
           parsed.defaultCountryCode = ''; // No default by default
         }
       }
+      if (!parsed.listStatuses) {
+        parsed.listStatuses = {};
+      }
       return parsed;
     }
   } catch {}
@@ -64,7 +67,8 @@ function getInitialSettings() {
     activeLanguage: 'fr',
     messageLanguages: defaultMessageLanguages,
     defaultCountryCode: '',
-    saveDirectory: ''
+    saveDirectory: '',
+    listStatuses: {}
   };
 }
 
@@ -526,12 +530,35 @@ export default function App() {
           await handleNewList(true);
         }
         refreshSavedLists();
+        
+        // Remove list status
+        setSettings(prev => {
+          if (!prev.listStatuses || !prev.listStatuses[list.name]) return prev;
+          const newStatuses = { ...prev.listStatuses };
+          delete newStatuses[list.name];
+          return { ...prev, listStatuses: newStatuses };
+        });
       },
       onCloseOverride: null
     });
   };
 
-
+  const handleUpdateListStatus = (listName, statusType, value) => {
+    setSettings(prev => {
+      const currentStatuses = prev.listStatuses || {};
+      const listStatus = currentStatuses[listName] || {};
+      return {
+        ...prev,
+        listStatuses: {
+          ...currentStatuses,
+          [listName]: {
+            ...listStatus,
+            [statusType]: value
+          }
+        }
+      };
+    });
+  };
 
   const handleImportExcel = async (e) => {
     const file = e.target.files?.[0];
@@ -709,6 +736,15 @@ export default function App() {
     // Update the real list name (this triggers auto-save which creates the new file)
     setListName(editName);
     setIsEditingName(false);
+    
+    // Transfer list status to new name
+    setSettings(prev => {
+      if (!prev.listStatuses || !prev.listStatuses[listName]) return prev;
+      const newStatuses = { ...prev.listStatuses };
+      newStatuses[editName] = newStatuses[listName];
+      delete newStatuses[listName];
+      return { ...prev, listStatuses: newStatuses };
+    });
   };
 
   // === Coverage Handlers ===
@@ -782,6 +818,20 @@ export default function App() {
     for (const name of listsToMerge) {
       await deleteSavedList(name, settings.saveDirectory);
     }
+    
+    // Remove old list statuses
+    setSettings(prev => {
+      if (!prev.listStatuses) return prev;
+      const newStatuses = { ...prev.listStatuses };
+      let changed = false;
+      for (const name of listsToMerge) {
+        if (newStatuses[name]) {
+          delete newStatuses[name];
+          changed = true;
+        }
+      }
+      return changed ? { ...prev, listStatuses: newStatuses } : prev;
+    });
     
     // Switch the active view to the newly merged list to prevent auto-save from resurrecting deleted lists
     isTransitioningRef.current = true;
@@ -927,6 +977,8 @@ export default function App() {
             onSaveDirectoryChange={(dir) => setSettings({ ...settings, saveDirectory: dir })}
             filePath={filePath}
             onBackupRestored={refreshSavedLists}
+            listStatuses={settings.listStatuses || {}}
+            onUpdateListStatus={handleUpdateListStatus}
           />
         </aside>
 
@@ -949,13 +1001,15 @@ export default function App() {
                       for (const [key, tpl] of Object.entries(DEFAULT_TEMPLATES)) {
                         defaultMessageLanguages[key] = { ...tpl.messages };
                       }
-                      setSettings({
+                      setSettings(prev => ({
                         socialDomains: [...DEFAULT_SOCIAL_DOMAINS],
                         saasDomains: [...DEFAULT_SAAS_DOMAINS],
                         activeLanguage: 'fr',
                         messageLanguages: defaultMessageLanguages,
-                        saveDirectory: settings.saveDirectory
-                      });
+                        saveDirectory: prev.saveDirectory,
+                        defaultCountryCode: prev.defaultCountryCode || '',
+                        listStatuses: prev.listStatuses || {}
+                      }));
                     },
                     onCloseOverride: null
                   });

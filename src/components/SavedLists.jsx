@@ -11,7 +11,9 @@ export default function SavedLists({
   saveDirectory,
   onSaveDirectoryChange,
   filePath,
-  onBackupRestored
+  onBackupRestored,
+  listStatuses = {},
+  onUpdateListStatus
 }) {
   const [copied, setCopied] = useState(false);
   const [backupStatus, setBackupStatus] = useState('');
@@ -86,14 +88,36 @@ export default function SavedLists({
           <div
             key={list.name}
             className={`saved-file-item-container ${list.name === currentListName ? 'active' : ''}`}
+            style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap' }}
           >
             <button
               className="saved-file-item"
               onClick={() => onLoadList(list)}
               title={list.name}
+              style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '4px' }}
             >
               <FileText size={16} className="sidebar-icon" /> {list.name}
             </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '4px', flexShrink: 0 }}>
+              <label title="WhatsApp Passed" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '10px', color: 'var(--text-muted)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={listStatuses[list.name]?.whatsapp || false}
+                  onChange={(e) => onUpdateListStatus && onUpdateListStatus(list.name, 'whatsapp', e.target.checked)}
+                  style={{ margin: 0, marginRight: '2px', width: '12px', height: '12px', cursor: 'pointer' }}
+                />
+                WA
+              </label>
+              <label title="All Passed" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '10px', color: 'var(--text-muted)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={listStatuses[list.name]?.all || false}
+                  onChange={(e) => onUpdateListStatus && onUpdateListStatus(list.name, 'all', e.target.checked)}
+                  style={{ margin: 0, marginRight: '2px', width: '12px', height: '12px', cursor: 'pointer' }}
+                />
+                ALL
+              </label>
+            </div>
             <button
               className="delete-list-btn"
               onClick={(e) => {
@@ -101,6 +125,7 @@ export default function SavedLists({
                 onDeleteList(list);
               }}
               title="Delete List"
+              style={{ flexShrink: 0 }}
             >
               <Trash2 size={16} />
             </button>
